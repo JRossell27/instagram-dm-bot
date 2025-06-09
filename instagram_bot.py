@@ -214,8 +214,11 @@ OPTION 2: Use backup code
     def check_comment_for_keywords(self, comment_text):
         """Check if comment contains any of the monitored keywords"""
         comment_lower = comment_text.lower()
+        logging.debug(f"Checking comment text: '{comment_text}' against keywords: {Config.KEYWORDS}")
+        
         for keyword in Config.KEYWORDS:
             if keyword.lower() in comment_lower:
+                logging.info(f"Found keyword '{keyword}' in comment: '{comment_text}'")
                 return keyword
         return None
     
@@ -240,17 +243,33 @@ OPTION 2: Use backup code
     def process_post_comments(self, post):
         """Process comments on a single post"""
         try:
+            logging.info(f"Fetching comments for post {post.code}...")
             comments = self.client.media_comments(post.id)
+            
+            if not comments:
+                logging.info(f"No comments found on post {post.code}")
+                return
+                
+            logging.info(f"Found {len(comments)} total comments on post {post.code}")
+            
             processed_count = 0
+            already_processed_count = 0
+            no_keyword_count = 0
             
             for comment in comments:
                 # Skip if already processed - use comment.pk instead of comment.id
                 if self.db.is_comment_processed(str(comment.pk)):
+                    already_processed_count += 1
                     continue
+                
+                # Log the comment for debugging
+                logging.info(f"Checking comment from @{comment.user.username}: '{comment.text[:50]}...'")
                 
                 # Check for keywords
                 keyword = self.check_comment_for_keywords(comment.text)
                 if keyword:
+                    logging.info(f"KEYWORD MATCH! Found '{keyword}' in comment from @{comment.user.username}")
+                    
                     # Mark as processed first to avoid duplicates - use comment.pk
                     self.db.mark_comment_processed(
                         str(comment.pk),
@@ -263,9 +282,22 @@ OPTION 2: Use backup code
                     # Send DM
                     if self.send_dm(comment.user.pk, comment.user.username, keyword):
                         processed_count += 1
+                        logging.info(f"Successfully sent DM to @{comment.user.username}")
+                    else:
+                        logging.error(f"Failed to send DM to @{comment.user.username}")
                     
                     # Add delay to avoid rate limiting
                     time.sleep(2)
+                else:
+                    no_keyword_count += 1
+                    logging.debug(f"No keyword match in comment from @{comment.user.username}")
+            
+            # Summary logging
+            logging.info(f"Comment processing summary for post {post.code}:")
+            logging.info(f"  - Total comments: {len(comments)}")
+            logging.info(f"  - Already processed: {already_processed_count}")
+            logging.info(f"  - No keywords found: {no_keyword_count}")
+            logging.info(f"  - New DMs sent: {processed_count}")
             
             if processed_count > 0:
                 logging.info(f"Processed {processed_count} new comments on post {post.code}")
@@ -281,6 +313,9 @@ OPTION 2: Use backup code
         
         try:
             logging.info("Starting comment monitoring cycle...")
+            logging.info(f"Current keywords: {Config.KEYWORDS}")
+            logging.info(f"Monitored post IDs: {Config.SPECIFIC_POST_IDS}")
+            logging.info(f"DM message: {Config.DM_MESSAGE}")
             
             # Get recent posts
             all_posts = self.get_recent_posts()
