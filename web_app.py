@@ -491,6 +491,125 @@ def instagram_setup():
         flash(f'Error loading Instagram setup: {str(e)}', 'error')
         return redirect(url_for('dashboard'))
 
+@app.route('/instagram_login')
+def instagram_login():
+    """Instagram Business OAuth login page"""
+    try:
+        # Pass Instagram App ID to template for OAuth
+        instagram_app_id = Config.INSTAGRAM_APP_ID or ''
+        return render_template('instagram_login.html', 
+                             instagram_app_id=instagram_app_id,
+                             bot_status=bot_status)
+                             
+    except Exception as e:
+        logging.error(f"Error in Instagram login page: {e}")
+        flash(f'Error loading Instagram login: {str(e)}', 'error')
+        return redirect(url_for('dashboard'))
+
+@app.route('/auth/instagram')
+def auth_instagram():
+    """Start Instagram OAuth flow"""
+    try:
+        if not Config.INSTAGRAM_APP_ID:
+            flash('❌ Instagram Business App not configured. Please set INSTAGRAM_APP_ID environment variable.', 'error')
+            return redirect(url_for('instagram_login'))
+        
+        # Generate state parameter for CSRF protection
+        state = secrets.token_urlsafe(32)
+        session['oauth_state'] = state
+        
+        # Instagram OAuth URL
+        auth_url = 'https://www.instagram.com/oauth/authorize'
+        params = {
+            'client_id': Config.INSTAGRAM_APP_ID,
+            'redirect_uri': f"{Config.WEBHOOK_BASE_URL}/auth/instagram/callback",
+            'scope': 'instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments',
+            'response_type': 'code',
+            'state': state
+        }
+        
+        auth_url_with_params = f"{auth_url}?{urllib.parse.urlencode(params)}"
+        return redirect(auth_url_with_params)
+        
+    except Exception as e:
+        logging.error(f"Error starting Instagram OAuth: {e}")
+        flash(f'❌ Error starting Instagram authentication: {str(e)}', 'error')
+        return redirect(url_for('instagram_login'))
+
+@app.route('/auth/instagram/callback')
+def auth_instagram_callback():
+    """Handle Instagram OAuth callback"""
+    try:
+        # Verify state parameter
+        if request.args.get('state') != session.get('oauth_state'):
+            flash('❌ Invalid state parameter. Authentication failed.', 'error')
+            return redirect(url_for('instagram_login'))
+        
+        # Get authorization code
+        code = request.args.get('code')
+        if not code:
+            error = request.args.get('error_description', 'Unknown error')
+            flash(f'❌ Instagram authentication failed: {error}', 'error')
+            return redirect(url_for('instagram_login'))
+        
+        # Exchange code for access token
+        token_url = 'https://www.instagram.com/oauth/access_token'
+        token_data = {
+            'client_id': Config.INSTAGRAM_APP_ID,
+            'client_secret': Config.INSTAGRAM_APP_SECRET,
+            'grant_type': 'authorization_code',
+            'redirect_uri': f"{Config.WEBHOOK_BASE_URL}/auth/instagram/callback",
+            'code': code
+        }
+        
+        response = requests.post(token_url, data=token_data)
+        
+        if response.status_code == 200:
+            token_info = response.json()
+            Config.INSTAGRAM_ACCESS_TOKEN = token_info.get('access_token')
+            Config.INSTAGRAM_USER_ID = token_info.get('user_id')
+            
+            # Save configuration
+            Config.save_runtime_config()
+            
+            # Initialize bot with new credentials
+            global bot
+            bot = None
+            if init_bot():
+                flash('✅ Instagram Business account connected successfully!', 'success')
+            else:
+                flash('⚠️ Instagram connected but bot initialization failed.', 'warning')
+            
+            return redirect(url_for('dashboard'))
+        else:
+            flash('❌ Failed to exchange authorization code for access token.', 'error')
+            return redirect(url_for('instagram_login'))
+            
+    except Exception as e:
+        logging.error(f"Error in Instagram OAuth callback: {e}")
+        flash(f'❌ Error processing Instagram authentication: {str(e)}', 'error')
+        return redirect(url_for('instagram_login'))
+
+@app.route('/instagram_login_manual')
+def instagram_login_manual():
+    """Manual Instagram session setup page"""
+    try:
+        # Check current login status
+        login_info = {
+            'username': Config.INSTAGRAM_USERNAME,
+            'has_session_id': bool(Config.INSTAGRAM_SESSION_ID),
+            'session_id_preview': f"{Config.INSTAGRAM_SESSION_ID[:8]}...{Config.INSTAGRAM_SESSION_ID[-8:]}" if Config.INSTAGRAM_SESSION_ID else None
+        }
+        
+        return render_template('instagram_login_manual.html', 
+                             login=login_info,
+                             bot_status=bot_status)
+                             
+    except Exception as e:
+        logging.error(f"Error in Instagram manual setup page: {e}")
+        flash(f'Error loading Instagram setup: {str(e)}', 'error')
+        return redirect(url_for('dashboard'))
+
 @app.route('/update_instagram_login', methods=['POST'])
 def update_instagram_login():
     """Update Instagram login credentials"""
@@ -516,7 +635,7 @@ def update_instagram_login():
         logging.error(f"Error updating Instagram login: {e}")
         flash(f'❌ Error updating Instagram login: {str(e)}', 'error')
     
-    return redirect(url_for('instagram_setup'))
+    return redirect(url_for('instagram_login_manual'))
 
 def get_instagram_account_info():
     """Get current Instagram account information for dashboard display"""
