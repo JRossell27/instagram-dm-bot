@@ -19,7 +19,7 @@ class Config:
     
     # WEBHOOK CONFIGURATION (ManyChat Strategy)
     # ========================================
-    WEBHOOK_BASE_URL = os.getenv('WEBHOOK_BASE_URL', 'https://your-app.onrender.com')
+    WEBHOOK_BASE_URL = os.getenv('WEBHOOK_BASE_URL', 'https://instagram-dm-bot-tk4d.onrender.com')
     WEBHOOK_VERIFY_TOKEN = os.getenv('WEBHOOK_VERIFY_TOKEN', 'your-webhook-verify-token')
     
     # POST MONITORING CONFIGURATION

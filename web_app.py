@@ -506,6 +506,19 @@ def instagram_login():
         flash(f'Error loading Instagram login: {str(e)}', 'error')
         return redirect(url_for('dashboard'))
 
+@app.route('/debug/oauth-config')
+def debug_oauth_config():
+    """Debug route to show OAuth configuration"""
+    config_info = {
+        'webhook_base_url': Config.WEBHOOK_BASE_URL,
+        'redirect_uri': f"{Config.WEBHOOK_BASE_URL}/auth/instagram/callback",
+        'app_id': Config.INSTAGRAM_APP_ID or 'NOT SET',
+        'app_secret_set': bool(Config.INSTAGRAM_APP_SECRET),
+        'current_host': request.host_url.rstrip('/')
+    }
+    
+    return jsonify(config_info)
+
 @app.route('/auth/instagram')
 def auth_instagram():
     """Start Instagram OAuth flow"""
@@ -513,6 +526,17 @@ def auth_instagram():
         if not Config.INSTAGRAM_APP_ID:
             flash('❌ Instagram Business App not configured. Please set INSTAGRAM_APP_ID environment variable.', 'error')
             return redirect(url_for('instagram_login'))
+        
+        if not Config.INSTAGRAM_APP_SECRET:
+            flash('❌ Instagram Business App Secret not configured. Please set INSTAGRAM_APP_SECRET environment variable.', 'error')
+            return redirect(url_for('instagram_login'))
+        
+        # Use current host if WEBHOOK_BASE_URL is not properly set
+        if not Config.WEBHOOK_BASE_URL or Config.WEBHOOK_BASE_URL == 'https://your-app.onrender.com':
+            base_url = request.host_url.rstrip('/')
+            redirect_uri = f"{base_url}/auth/instagram/callback"
+        else:
+            redirect_uri = f"{Config.WEBHOOK_BASE_URL}/auth/instagram/callback"
         
         # Generate state parameter for CSRF protection
         state = secrets.token_urlsafe(32)
@@ -522,11 +546,14 @@ def auth_instagram():
         auth_url = 'https://www.instagram.com/oauth/authorize'
         params = {
             'client_id': Config.INSTAGRAM_APP_ID,
-            'redirect_uri': f"{Config.WEBHOOK_BASE_URL}/auth/instagram/callback",
+            'redirect_uri': redirect_uri,
             'scope': 'instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments',
             'response_type': 'code',
             'state': state
         }
+        
+        # Log the redirect URI for debugging
+        logging.info(f"🔗 Instagram OAuth redirect URI: {redirect_uri}")
         
         auth_url_with_params = f"{auth_url}?{urllib.parse.urlencode(params)}"
         return redirect(auth_url_with_params)
@@ -552,15 +579,24 @@ def auth_instagram_callback():
             flash(f'❌ Instagram authentication failed: {error}', 'error')
             return redirect(url_for('instagram_login'))
         
+        # Use same redirect URI logic as auth flow
+        if not Config.WEBHOOK_BASE_URL or Config.WEBHOOK_BASE_URL == 'https://your-app.onrender.com':
+            base_url = request.host_url.rstrip('/')
+            redirect_uri = f"{base_url}/auth/instagram/callback"
+        else:
+            redirect_uri = f"{Config.WEBHOOK_BASE_URL}/auth/instagram/callback"
+        
         # Exchange code for access token
         token_url = 'https://www.instagram.com/oauth/access_token'
         token_data = {
             'client_id': Config.INSTAGRAM_APP_ID,
             'client_secret': Config.INSTAGRAM_APP_SECRET,
             'grant_type': 'authorization_code',
-            'redirect_uri': f"{Config.WEBHOOK_BASE_URL}/auth/instagram/callback",
+            'redirect_uri': redirect_uri,
             'code': code
         }
+        
+        logging.info(f"🔄 Token exchange using redirect URI: {redirect_uri}")
         
         response = requests.post(token_url, data=token_data)
         
@@ -568,6 +604,11 @@ def auth_instagram_callback():
             token_info = response.json()
             Config.INSTAGRAM_ACCESS_TOKEN = token_info.get('access_token')
             Config.INSTAGRAM_USER_ID = token_info.get('user_id')
+            
+            # Update webhook base URL to current host if not set properly
+            if not Config.WEBHOOK_BASE_URL or Config.WEBHOOK_BASE_URL == 'https://your-app.onrender.com':
+                Config.WEBHOOK_BASE_URL = request.host_url.rstrip('/')
+                logging.info(f"📍 Updated WEBHOOK_BASE_URL to: {Config.WEBHOOK_BASE_URL}")
             
             # Save configuration
             Config.save_runtime_config()
@@ -582,7 +623,9 @@ def auth_instagram_callback():
             
             return redirect(url_for('dashboard'))
         else:
-            flash('❌ Failed to exchange authorization code for access token.', 'error')
+            error_info = response.json() if response.headers.get('content-type', '').startswith('application/json') else response.text
+            logging.error(f"❌ Token exchange failed: {response.status_code} - {error_info}")
+            flash(f'❌ Failed to exchange authorization code for access token. Status: {response.status_code}', 'error')
             return redirect(url_for('instagram_login'))
             
     except Exception as e:
