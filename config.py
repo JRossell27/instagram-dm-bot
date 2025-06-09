@@ -22,10 +22,17 @@ class Config:
     WEBHOOK_BASE_URL = os.getenv('WEBHOOK_BASE_URL', 'https://your-app.onrender.com')
     WEBHOOK_VERIFY_TOKEN = os.getenv('WEBHOOK_VERIFY_TOKEN', 'your-webhook-verify-token')
     
-    # KEYWORD STRATEGY (ManyChat Approach)
-    # ===================================
+    # POST MONITORING CONFIGURATION
+    # ============================
+    MONITOR_ALL_POSTS = False  # Set to True to monitor ALL posts, False to monitor specific posts
+    MONITORED_POST_IDS = []  # List of specific post IDs to monitor (when MONITOR_ALL_POSTS is False)
     
-    # Consent keywords - trigger DIRECT DM sending
+    # KEYWORD STRATEGY CONFIGURATION
+    # =============================
+    # Choose your strategy: 'consent_required' or 'any_keyword'
+    KEYWORD_STRATEGY = 'consent_required'  # Options: 'consent_required', 'any_keyword'
+    
+    # Consent keywords - trigger DIRECT DM sending (when consent_required strategy)
     CONSENT_KEYWORDS = [
         'dm me',
         'send me',
@@ -36,7 +43,7 @@ class Config:
         'inbox me'
     ]
     
-    # Interest keywords - trigger public reply encouraging DM
+    # Interest keywords - trigger public reply encouraging DM (when consent_required strategy)
     INTEREST_KEYWORDS = [
         'interested',
         'info',
@@ -48,7 +55,7 @@ class Config:
         'more info'
     ]
     
-    # All keywords combined (for backward compatibility)
+    # All keywords combined (used when any_keyword strategy is selected)
     KEYWORDS = CONSENT_KEYWORDS + INTEREST_KEYWORDS
     
     # DIRECT DM CONFIGURATION
@@ -112,6 +119,13 @@ Let me know if you have any questions! 🙂"""
                 cls.INTEREST_KEYWORDS = config_data.get('INTEREST_KEYWORDS', cls.INTEREST_KEYWORDS)
                 cls.KEYWORDS = config_data.get('KEYWORDS', cls.CONSENT_KEYWORDS + cls.INTEREST_KEYWORDS)
                 
+                # Load post monitoring settings
+                cls.MONITOR_ALL_POSTS = config_data.get('MONITOR_ALL_POSTS', cls.MONITOR_ALL_POSTS)
+                cls.MONITORED_POST_IDS = config_data.get('MONITORED_POST_IDS', cls.MONITORED_POST_IDS)
+                
+                # Load keyword strategy
+                cls.KEYWORD_STRATEGY = config_data.get('KEYWORD_STRATEGY', getattr(cls, 'KEYWORD_STRATEGY', 'consent_required'))
+                
                 print("✅ Runtime configuration loaded successfully")
                 return True
             else:
@@ -155,7 +169,14 @@ Let me know if you have any questions! 🙂"""
                 'MAX_DMS_PER_HOUR': cls.MAX_DMS_PER_HOUR,
                 'MAX_DMS_PER_DAY': cls.MAX_DMS_PER_DAY,
                 'MIN_FOLLOWER_COUNT': cls.MIN_FOLLOWER_COUNT,
-                'ONLY_VERIFIED_ACCOUNTS': cls.ONLY_VERIFIED_ACCOUNTS
+                'ONLY_VERIFIED_ACCOUNTS': cls.ONLY_VERIFIED_ACCOUNTS,
+                
+                # Post Monitoring
+                'MONITOR_ALL_POSTS': cls.MONITOR_ALL_POSTS,
+                'MONITORED_POST_IDS': cls.MONITORED_POST_IDS,
+                
+                # Keyword Strategy
+                'KEYWORD_STRATEGY': getattr(cls, 'KEYWORD_STRATEGY', 'consent_required')
             }
             
             with open('runtime_config.json', 'w') as f:

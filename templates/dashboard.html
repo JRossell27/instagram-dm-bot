@@ -267,22 +267,127 @@
                 </div>
                 <div class="d-flex justify-content-between mb-2">
                     <span>Authenticated:</span>
-                    <span class="{% if bot_status.authenticated %}text-success{% else %}text-danger{% endif %}">
-                        {% if bot_status.authenticated %}Yes{% else %}No{% endif %}
+                    <span class="{% if bot_status.logged_in %}text-success{% else %}text-warning{% endif %}">
+                        {% if bot_status.logged_in %}Yes{% else %}No{% endif %}
                     </span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
-                    <span>Comments Processed:</span>
-                    <span>{{ stats.total_processed or 0 }}</span>
+                    <span>Direct DMs:</span>
+                    <span class="{% if bot_status.capabilities.direct_dm %}text-success{% else %}text-muted{% endif %}">
+                        {% if bot_status.capabilities.direct_dm %}Enabled{% else %}Disabled{% endif %}
+                    </span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
-                    <span>DMs Sent:</span>
-                    <span class="text-success">{{ bot_status.total_dms_sent or 0 }}</span>
+                    <span>Today's DMs:</span>
+                    <span class="text-info">{{ bot_status.today_dm_count or 0 }}</span>
                 </div>
-                <div class="d-flex justify-content-between">
-                    <span>Webhooks Received:</span>
-                    <span class="text-info">{{ bot_status.total_webhooks_processed or 0 }}</span>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Hourly Rate:</span>
+                    <span class="text-info">{{ bot_status.hourly_dm_count or 0 }}/hr</span>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Post Monitoring & Keyword Strategy Configuration -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-target me-2"></i>Post Monitoring
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="postMonitoringForm">
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="monitoring_type" id="monitorAll" value="all" 
+                                   {% if stats.monitor_all_posts %}checked{% endif %}>
+                            <label class="form-check-label" for="monitorAll">
+                                <strong>Monitor ALL Posts</strong>
+                                <small class="d-block text-muted">Webhooks will process comments from all your posts</small>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="monitoring_type" id="monitorSpecific" value="specific"
+                                   {% if not stats.monitor_all_posts %}checked{% endif %}>
+                            <label class="form-check-label" for="monitorSpecific">
+                                <strong>Monitor Specific Posts</strong>
+                                <small class="d-block text-muted">Only process comments from selected posts</small>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="specificPostsSection" {% if stats.monitor_all_posts %}style="display: none;"{% endif %}>
+                        <div class="mb-3">
+                            <label for="postIds" class="form-label">Post IDs to Monitor</label>
+                            <textarea class="form-control" id="postIds" rows="3" 
+                                      placeholder="Enter Instagram post IDs, one per line&#10;Example:&#10;17841234567890123&#10;17841234567890124">{{ stats.monitored_post_ids | join('\n') if stats.monitored_post_ids else '' }}</textarea>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Add post IDs after telling people to comment with keywords. Get post IDs from Instagram Business API or your media library.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="btn btn-primary" onclick="updatePostMonitoring()">
+                        <i class="fas fa-save me-2"></i>Update Post Monitoring
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-brain me-2"></i>Keyword Strategy
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="keywordStrategyForm">
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="keyword_strategy" id="consentRequired" value="consent_required"
+                                   {% if stats.keyword_strategy == 'consent_required' %}checked{% endif %}>
+                            <label class="form-check-label" for="consentRequired">
+                                <strong>Consent Required (ManyChat Style)</strong>
+                                <small class="d-block text-muted">Only send DMs when users explicitly ask to be messaged</small>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="keyword_strategy" id="anyKeyword" value="any_keyword"
+                                   {% if stats.keyword_strategy == 'any_keyword' %}checked{% endif %}>
+                            <label class="form-check-label" for="anyKeyword">
+                                <strong>Any Keyword (Traditional)</strong>
+                                <small class="d-block text-muted">Send DM for any matched keyword from your list</small>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Current Strategy:</strong>
+                        {% if stats.keyword_strategy == 'consent_required' %}
+                            <span class="text-success">Consent Required</span> - More compliant, requires explicit consent keywords like "DM me"
+                        {% else %}
+                            <span class="text-primary">Any Keyword</span> - Traditional approach, sends DM for any matched keyword
+                        {% endif %}
+                    </div>
+                    
+                    <button type="button" class="btn btn-success" onclick="updateKeywordStrategy()">
+                        <i class="fas fa-save me-2"></i>Update Strategy
+                    </button>
+                </form>
             </div>
         </div>
     </div>
@@ -432,5 +537,106 @@
     setInterval(function() {
         location.reload();
     }, 30000);
+    
+    // Show/hide specific posts section based on monitoring type selection
+    document.addEventListener('DOMContentLoaded', function() {
+        const monitorAll = document.getElementById('monitorAll');
+        const monitorSpecific = document.getElementById('monitorSpecific');
+        const specificSection = document.getElementById('specificPostsSection');
+        
+        function toggleSpecificSection() {
+            if (monitorSpecific.checked) {
+                specificSection.style.display = 'block';
+            } else {
+                specificSection.style.display = 'none';
+            }
+        }
+        
+        monitorAll.addEventListener('change', toggleSpecificSection);
+        monitorSpecific.addEventListener('change', toggleSpecificSection);
+    });
+    
+    // Update post monitoring configuration
+    function updatePostMonitoring() {
+        const monitorAll = document.getElementById('monitorAll').checked;
+        const postIds = document.getElementById('postIds').value.trim();
+        
+        const data = {
+            monitor_all_posts: monitorAll,
+            monitored_post_ids: monitorAll ? [] : postIds.split('\n').filter(id => id.trim())
+        };
+        
+        fetch('/api/update-post-monitoring', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('Post monitoring configuration updated successfully!', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showAlert(data.message || 'Failed to update post monitoring configuration', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('Error updating post monitoring configuration', 'error');
+        });
+    }
+    
+    // Update keyword strategy configuration
+    function updateKeywordStrategy() {
+        const consentRequired = document.getElementById('consentRequired').checked;
+        const keywordStrategy = consentRequired ? 'consent_required' : 'any_keyword';
+        
+        const data = {
+            keyword_strategy: keywordStrategy
+        };
+        
+        fetch('/api/update-keyword-strategy', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('Keyword strategy updated successfully!', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showAlert(data.message || 'Failed to update keyword strategy', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('Error updating keyword strategy', 'error');
+        });
+    }
+    
+    // Show alert messages
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+        alertDiv.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alertDiv);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.parentNode.removeChild(alertDiv);
+            }
+        }, 5000);
+    }
 </script>
 {% endblock %} 

@@ -95,7 +95,12 @@ def dashboard():
             'dm_message': Config.DM_MESSAGE,
             'default_link': Config.DEFAULT_LINK,
             'webhook_enabled': True,
-            'real_time_processing': True
+            'real_time_processing': True,
+            
+            # New configuration data
+            'monitor_all_posts': Config.MONITOR_ALL_POSTS,
+            'monitored_post_ids': Config.MONITORED_POST_IDS,
+            'keyword_strategy': getattr(Config, 'KEYWORD_STRATEGY', 'consent_required')
         }
         
         # Get Instagram account info
@@ -228,21 +233,87 @@ def api_status():
 
 @app.route('/api/stats')
 def api_stats():
-    """API endpoint for statistics"""
+    """Return bot statistics as JSON"""
+    db = Database()
+    recent_comments = db.get_recent_processed_comments(10)
+    
+    return jsonify({
+        'total_processed': len(db.get_recent_processed_comments(1000)),
+        'total_dms_sent': len([c for c in recent_comments if 'dm_sent' in str(c)]),
+        'webhook_active': bot_status['webhook_active'],
+        'authenticated': bot_status['authenticated'],
+        'recent_activity': recent_comments[:5],  # Last 5 for API
+        'last_update': datetime.now().isoformat()
+    })
+
+@app.route('/api/update-post-monitoring', methods=['POST'])
+def api_update_post_monitoring():
+    """Update post monitoring configuration"""
     try:
-        db = Database()
-        recent_comments = db.get_recent_processed_comments(10)
+        data = request.get_json()
+        monitor_all = data.get('monitor_all_posts', False)
+        monitored_ids = data.get('monitored_post_ids', [])
         
-        return jsonify({
-            'recent_activity': recent_comments,
-            'total_processed': len(db.get_recent_processed_comments(1000)),
-            'webhook_active': bot_status['webhook_active'],
-            'authenticated': bot_status['authenticated'],
-            'last_webhook': bot_status['last_webhook_received'].isoformat() if bot_status['last_webhook_received'] else None,
-            'capabilities': bot_status['capabilities']
-        })
+        # Update configuration
+        Config.MONITOR_ALL_POSTS = monitor_all
+        Config.MONITORED_POST_IDS = monitored_ids
+        
+        # Save to runtime config
+        if Config.save_runtime_config():
+            logging.info(f"Updated post monitoring: all_posts={monitor_all}, specific_ids={len(monitored_ids)}")
+            return jsonify({
+                'success': True,
+                'message': f"Post monitoring updated: {'All posts' if monitor_all else f'{len(monitored_ids)} specific posts'}"
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to save configuration'
+            }), 500
+            
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logging.error(f"Error updating post monitoring: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Error updating post monitoring: {str(e)}'
+        }), 500
+
+@app.route('/api/update-keyword-strategy', methods=['POST'])
+def api_update_keyword_strategy():
+    """Update keyword strategy configuration"""
+    try:
+        data = request.get_json()
+        strategy = data.get('keyword_strategy', 'consent_required')
+        
+        if strategy not in ['consent_required', 'any_keyword']:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid keyword strategy. Must be "consent_required" or "any_keyword"'
+            }), 400
+        
+        # Update configuration
+        Config.KEYWORD_STRATEGY = strategy
+        
+        # Save to runtime config
+        if Config.save_runtime_config():
+            strategy_name = "Consent Required (ManyChat Style)" if strategy == 'consent_required' else "Any Keyword (Traditional)"
+            logging.info(f"Updated keyword strategy to: {strategy}")
+            return jsonify({
+                'success': True,
+                'message': f"Keyword strategy updated to: {strategy_name}"
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to save configuration'
+            }), 500
+            
+    except Exception as e:
+        logging.error(f"Error updating keyword strategy: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Error updating keyword strategy: {str(e)}'
+        }), 500
 
 @app.route('/manage_keywords')
 def manage_keywords():

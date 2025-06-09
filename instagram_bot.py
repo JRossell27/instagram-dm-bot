@@ -165,8 +165,17 @@ class InstagramBusinessBot:
             comment_author = comment_data.get('from', {})
             author_id = comment_author.get('id')
             author_username = comment_author.get('username', 'user')
+            media_id = comment_data.get('media', {}).get('id', '')
             
             logging.info(f"🔔 WEBHOOK: New comment from @{author_username}: {comment_text[:50]}...")
+            
+            # POST FILTERING: Check if we should monitor this post
+            if not Config.MONITOR_ALL_POSTS:
+                if media_id not in Config.MONITORED_POST_IDS:
+                    logging.info(f"⏭️ SKIPPING: Post {media_id} not in monitored posts list")
+                    return False
+            
+            logging.info(f"✅ POST MONITORED: Processing comment on post {media_id}")
             
             # Check if already processed
             if self.db.is_comment_processed(comment_id):
@@ -179,64 +188,70 @@ class InstagramBusinessBot:
             if matched_keyword:
                 logging.info(f"🎯 KEYWORD MATCH: '{matched_keyword}' from @{author_username}")
                 
-                # ManyChat Strategy: Check for explicit consent to send direct DM
-                if Config.ENABLE_DIRECT_DM and author_id:
-                    has_consent = self.has_consent_to_dm(comment_text)
-                    
-                    if has_consent:
-                        # DIRECT DM APPROACH (like ManyChat)
+                # Apply keyword strategy
+                if Config.KEYWORD_STRATEGY == 'consent_required':
+                    # MANYCHAT STRATEGY: Require explicit consent for direct DM
+                    if Config.ENABLE_DIRECT_DM and author_id:
+                        has_consent = self.has_consent_to_dm(comment_text)
+                        
+                        if has_consent:
+                            # DIRECT DM APPROACH (like ManyChat)
+                            dm_message = self.get_direct_dm_message(author_username, comment_text, matched_keyword)
+                            
+                            if self.send_direct_message(author_id, dm_message):
+                                # Log successful direct DM
+                                self.db.add_processed_comment(
+                                    comment_id=comment_id,
+                                    post_id=media_id,
+                                    username=author_username,
+                                    user_id=author_id,
+                                    comment_text=comment_text,
+                                    keyword=matched_keyword,
+                                    action_taken='direct_dm_sent_with_consent'
+                                )
+                                logging.info(f"✅ CONSENT DM sent to @{author_username}")
+                                return True
+                            else:
+                                logging.error(f"❌ Failed to send consent-based DM to @{author_username}")
+                        else:
+                            # No consent - encourage DM via public reply (if available)
+                            logging.info(f"📢 NO CONSENT: Encouraging @{author_username} to DM")
+                            self.db.add_processed_comment(
+                                comment_id=comment_id,
+                                post_id=media_id,
+                                username=author_username,
+                                user_id=author_id,
+                                comment_text=comment_text,
+                                keyword=matched_keyword,
+                                action_taken='encouraged_to_dm'
+                            )
+                            return True
+                
+                elif Config.KEYWORD_STRATEGY == 'any_keyword':
+                    # ANY KEYWORD STRATEGY: Send DM for any matched keyword (traditional approach)
+                    if Config.ENABLE_DIRECT_DM and author_id:
                         dm_message = self.get_direct_dm_message(author_username, comment_text, matched_keyword)
                         
                         if self.send_direct_message(author_id, dm_message):
                             # Log successful direct DM
                             self.db.add_processed_comment(
                                 comment_id=comment_id,
-                                post_id=comment_data.get('media', {}).get('id', ''),
+                                post_id=media_id,
                                 username=author_username,
                                 user_id=author_id,
                                 comment_text=comment_text,
                                 keyword=matched_keyword,
-                                action_taken='direct_dm_sent_with_consent'
+                                action_taken='direct_dm_sent_any_keyword'
                             )
-                            
-                            # Also log to DM table
-                            self.db.log_sent_dm(author_id, author_username, dm_message)
-                            
-                            logging.info(f"✅ DIRECT DM sent to @{author_username} with consent for keyword '{matched_keyword}'")
+                            logging.info(f"✅ KEYWORD DM sent to @{author_username} for '{matched_keyword}'")
                             return True
                         else:
-                            logging.warning(f"❌ Failed to send direct DM to @{author_username}")
-                    else:
-                        # Interest keyword but no consent - encourage DM via public reply
-                        logging.info(f"⚠️ Interest keyword '{matched_keyword}' but no explicit consent from @{author_username}")
-                        
-                        # Mark as processed - no action taken (webhook doesn't support public replies easily)
-                        self.db.add_processed_comment(
-                            comment_id=comment_id,
-                            post_id=comment_data.get('media', {}).get('id', ''),
-                            username=author_username,
-                            user_id=author_id,
-                            comment_text=comment_text,
-                            keyword=matched_keyword,
-                            action_taken='interest_detected_no_consent'
-                        )
-                        
-                        logging.info(f"📝 Logged interest from @{author_username} without consent")
-                        return False
+                            logging.error(f"❌ Failed to send keyword-based DM to @{author_username}")
                 
+                return False
             else:
-                # Mark as processed but no action
-                self.db.add_processed_comment(
-                    comment_id=comment_id,
-                    post_id=comment_data.get('media', {}).get('id', ''),
-                    username=author_username,
-                    user_id=author_id,
-                    comment_text=comment_text,
-                    keyword=None,
-                    action_taken='no_keyword_match'
-                )
-                
-            return False
+                logging.info(f"⏭️ No keywords matched in comment: '{comment_text[:50]}...'")
+                return False
             
         except Exception as e:
             logging.error(f"❌ Error processing webhook comment: {e}")
