@@ -6,6 +6,8 @@ from instagrapi.exceptions import LoginRequired, ChallengeRequired, PleaseWaitFe
 from config import Config
 from database import Database
 import os
+import random
+import json
 
 # Set up logging
 logging.basicConfig(
@@ -28,9 +30,89 @@ class InstagramBot:
         self.login_check_interval = 300  # Only check login status every 5 minutes
         self.last_login_attempt = None
         self.login_retry_delay = 600  # Wait 10 minutes between failed login attempts
+        self.session_file = "session.json"
         
+        # Configure client for better persistence
+        self._configure_client()
+        
+    def _configure_client(self):
+        """Configure client with realistic settings to avoid detection"""
+        # Set realistic user agent (mobile app style)
+        mobile_user_agents = [
+            "Instagram 250.0.0.16.109 Android (29/10; 360dpi; 720x1448; samsung; SM-A205F; a20; exynos7884B; en_US; 380621387)",
+            "Instagram 250.0.0.16.109 Android (28/9; 320dpi; 720x1448; samsung; SM-J415F; j4lte; exynos7570; en_US; 380621387)",
+            "Instagram 250.0.0.16.109 Android (30/11; 420dpi; 1080x2340; OnePlus; HD1903; OnePlus7T; qcom; en_US; 380621387)"
+        ]
+        
+        # Set device settings to match a real phone
+        self.client.set_user_agent(random.choice(mobile_user_agents))
+        
+        # Set device UUID and other identifiers consistently
+        device_settings = {
+            "app_version": "250.0.0.16.109",
+            "android_version": 29,
+            "android_release": "10",
+            "dpi": "360dpi",
+            "resolution": "720x1448",
+            "manufacturer": "samsung",
+            "device": "SM-A205F",
+            "model": "a20",
+            "cpu": "exynos7884B",
+            "version_code": "380621387"
+        }
+        self.client.set_device(device_settings)
+        
+        # Set realistic delays
+        self.client.delay_range = [3, 7]  # Random delay between 3-7 seconds
+        
+    def _save_session_safely(self):
+        """Save session with backup in case of corruption"""
+        try:
+            # Save to temporary file first
+            temp_file = f"{self.session_file}.tmp"
+            self.client.dump_settings(temp_file)
+            
+            # Create backup of existing session
+            if os.path.exists(self.session_file):
+                backup_file = f"{self.session_file}.backup"
+                os.rename(self.session_file, backup_file)
+            
+            # Move temp file to main session file
+            os.rename(temp_file, self.session_file)
+            logging.info("✅ Session saved safely")
+            
+        except Exception as e:
+            logging.error(f"Failed to save session: {e}")
+    
+    def _load_session_safely(self):
+        """Load session with fallback to backup if corrupted"""
+        session_loaded = False
+        
+        # Try main session file
+        if os.path.exists(self.session_file):
+            try:
+                self.client.load_settings(self.session_file)
+                session_loaded = True
+                logging.info("📱 Loaded main session file")
+            except Exception as e:
+                logging.warning(f"Main session file corrupted: {e}")
+                
+                # Try backup session file
+                backup_file = f"{self.session_file}.backup"
+                if os.path.exists(backup_file):
+                    try:
+                        self.client.load_settings(backup_file)
+                        session_loaded = True
+                        logging.info("📱 Loaded backup session file")
+                        # Copy backup to main
+                        os.rename(backup_file, self.session_file)
+                    except Exception as backup_error:
+                        logging.warning(f"Backup session also corrupted: {backup_error}")
+        
+        return session_loaded
+    
     def login(self):
-        """Login to Instagram using session ID only"""
+        """Login to Instagram using session ID with better persistence"""
         try:
             # Check if we've recently failed a login attempt
             if (self.last_login_attempt and 
@@ -38,13 +120,16 @@ class InstagramBot:
                 logging.warning(f"Waiting {self.login_retry_delay} seconds between login attempts to avoid rate limiting")
                 return False
                 
-            logging.info("Attempting to login to Instagram using session ID...")
+            logging.info("🔐 Attempting to login to Instagram using session ID...")
             
-            # Get session ID from config first, then fall back to environment variable
+            # Try to load existing session first
+            session_loaded = self._load_session_safely()
+            
+            # Get session ID from config
             session_id = getattr(Config, 'INSTAGRAM_SESSION_ID', None) or os.getenv('INSTAGRAM_SESSION_ID', '').strip()
             
             if not session_id:
-                logging.error("No Instagram session ID provided")
+                logging.error("❌ No Instagram session ID provided")
                 self.last_login_attempt = datetime.now()
                 raise Exception("""Instagram session ID required. To get your session ID:
 
@@ -53,24 +138,42 @@ class InstagramBot:
 3. Find 'sessionid' cookie and copy its value
 4. Update it in the web interface under Settings → Instagram Login""")
             
-            # Create fresh client for session ID login
-            self.client = Client()
-            
             # Add delay to avoid rate limiting
-            time.sleep(3)
+            time.sleep(random.uniform(2, 5))
+            
+            # Try session file login first if available
+            if session_loaded:
+                try:
+                    # Test if session is still valid
+                    user_info = self.client.account_info()
+                    logging.info(f"✅ Successfully resumed session for @{user_info.username}")
+                    self.logged_in = True
+                    self.last_login_check = datetime.now()
+                    return True
+                except Exception as session_error:
+                    logging.warning(f"⚠️ Saved session expired: {session_error}")
+                    # Continue to session ID login
+            
+            # Fresh login with session ID
+            self.client = Client()  # Create fresh client
+            self._configure_client()  # Reapply configuration
+            
+            # Add longer delay for fresh login
+            time.sleep(random.uniform(3, 8))
             
             # Login with session ID
-            logging.info("Logging in with session ID...")
+            logging.info("🔑 Logging in with session ID...")
             self.client.login_by_sessionid(session_id)
-            logging.info("✅ Successfully logged in using session ID")
+            
+            # Verify login worked
+            user_info = self.client.account_info()
+            logging.info(f"✅ Successfully logged in as @{user_info.username}")
             
             self.logged_in = True
             self.last_login_check = datetime.now()
             
             # Save session for future use
-            session_file = "session.json"
-            self.client.dump_settings(session_file)
-            logging.info("Session saved for future logins")
+            self._save_session_safely()
             
             return True
                     
@@ -80,8 +183,8 @@ class InstagramBot:
             error_msg = str(e).lower()
             
             # Provide specific error messages
-            if "sessionid" in error_msg or "invalid session" in error_msg:
-                logging.error("Instagram session ID expired or invalid")
+            if "sessionid" in error_msg or "invalid session" in error_msg or "401" in error_msg:
+                logging.error("❌ Instagram session ID expired or invalid")
                 raise Exception("""Instagram session ID expired or invalid. To get a new session ID:
 
 1. Login to Instagram in your browser manually
@@ -90,13 +193,13 @@ class InstagramBot:
 4. Update it in the web interface under Settings → Instagram Login
 5. Session IDs typically last 1-3 months""")
             elif "challenge_required" in error_msg:
-                logging.error("Instagram challenge required")
+                logging.error("❌ Instagram challenge required")
                 raise Exception("Instagram requires verification. Login manually in browser first to complete any challenges, then get a new session ID.")
             elif "rate_limit" in error_msg or "too many" in error_msg:
-                logging.error("Rate limited by Instagram")
+                logging.error("❌ Rate limited by Instagram")
                 raise Exception("Instagram rate limit reached. Please wait a few hours before trying again.")
             else:
-                logging.error(f"Login failed: {e}")
+                logging.error(f"❌ Login failed: {e}")
                 raise Exception(f"Instagram login failed: {e}")
     
     def should_monitor_post(self, post):
@@ -172,43 +275,63 @@ class InstagramBot:
             return False
     
     def check_login_status(self):
-        """Check if we're still logged in and re-login if needed"""
-        
-        # If we just did a login check recently, don't check again
-        if (self.last_login_check and 
-            (datetime.now() - self.last_login_check).total_seconds() < self.login_check_interval):
-            return self.logged_in
-        
-        # If we recently failed a login attempt, wait before trying again
-        if (self.last_login_attempt and 
-            (datetime.now() - self.last_login_attempt).total_seconds() < self.login_retry_delay):
-            logging.warning("Waiting before next login attempt due to recent failure")
-            return self.logged_in
-        
+        """Check if we're still logged in with better session handling"""
         try:
-            # Try a simple API call to check if we're still logged in
-            self.client.account_info()
-            self.logged_in = True
-            self.last_login_check = datetime.now()
-            return True
-        except Exception as e:
-            error_msg = str(e).lower()
-            self.last_login_check = datetime.now()
+            # Only check status if we haven't checked recently
+            if (self.last_login_check and 
+                (datetime.now() - self.last_login_check).total_seconds() < self.login_check_interval):
+                return self.logged_in
             
-            if "login_required" in error_msg or "unauthorized" in error_msg or "403" in error_msg:
-                logging.warning("Session expired, marking as logged out")
-                self.logged_in = False
-                # Don't automatically re-login here to avoid rate limiting
-                return False
-            elif "rate" in error_msg or "wait" in error_msg:
-                logging.warning("Rate limited during login check, assuming still logged in")
-                return self.logged_in  # Don't change login status if rate limited
-            else:
-                logging.error(f"Login status check failed with unexpected error: {e}")
-                return self.logged_in  # Keep current status on unexpected errors
+            if not self.logged_in:
+                logging.info("🔐 Not logged in, attempting login...")
+                return self.login()
+            
+            # Test if session is still valid with a simple API call
+            try:
+                # Add small delay to avoid hammering the API
+                time.sleep(random.uniform(0.5, 1.5))
+                
+                user_info = self.client.account_info()
+                
+                if user_info and user_info.pk:
+                    logging.info(f"✅ Session still valid for @{user_info.username}")
+                    self.last_login_check = datetime.now()
+                    self.logged_in = True
+                    
+                    # Save the session periodically to keep it fresh
+                    self._save_session_safely()
+                    
+                    return True
+                else:
+                    logging.warning("⚠️ Session check returned invalid user info")
+                    self.logged_in = False
+                    return self.login()
+                    
+            except Exception as check_error:
+                error_msg = str(check_error).lower()
+                
+                if ("login_required" in error_msg or "unauthorized" in error_msg or 
+                    "401" in error_msg or "session" in error_msg):
+                    logging.warning("⚠️ Session expired, attempting fresh login...")
+                    self.logged_in = False
+                    return self.login()
+                elif "rate" in error_msg or "wait" in error_msg or "429" in error_msg:
+                    logging.warning("⏳ Rate limited during login check, assuming still logged in")
+                    # Don't mark as logged out for rate limits
+                    return self.logged_in
+                else:
+                    logging.error(f"❌ Unexpected error during login check: {check_error}")
+                    # For unknown errors, try to re-login
+                    self.logged_in = False
+                    return self.login()
+                    
+        except Exception as e:
+            logging.error(f"❌ Critical error in check_login_status: {e}")
+            self.logged_in = False
+            return False
     
     def get_recent_posts(self, limit=None):
-        """Get recent posts from the account"""
+        """Get recent posts from the account with better session handling"""
         if not limit:
             limit = Config.MAX_POSTS_TO_CHECK
             
@@ -218,22 +341,33 @@ class InstagramBot:
                 if not self.login():
                     logging.error("Unable to login")
                     return []
-                    
+            
+            # Add human-like delay before request
+            time.sleep(random.uniform(1, 3))
+            
             user_id = self.client.user_id_from_username(Config.INSTAGRAM_USERNAME)
+            
+            # Add another small delay
+            time.sleep(random.uniform(0.5, 2))
+            
             posts = self.client.user_medias(user_id, limit)
+            logging.info(f"📱 Successfully fetched {len(posts)} posts")
             return posts
+            
         except Exception as e:
             error_msg = str(e).lower()
-            if ("login_required" in error_msg or "unauthorized" in error_msg) and self.logged_in:
-                logging.warning("Session expired during post fetch, will attempt re-login on next cycle")
+            if ("login_required" in error_msg or "unauthorized" in error_msg or "401" in error_msg) and self.logged_in:
+                logging.warning("⚠️ Session expired during post fetch, marking as logged out")
                 self.logged_in = False
                 self.last_login_attempt = datetime.now()
                 return []
-            elif "rate" in error_msg or "wait" in error_msg:
-                logging.warning("Rate limited while fetching posts - will retry next cycle")
+            elif "rate" in error_msg or "wait" in error_msg or "429" in error_msg:
+                logging.warning("⏳ Rate limited while fetching posts - will retry next cycle")
+                # Add longer delay for rate limiting
+                time.sleep(random.uniform(10, 20))
                 return []
             else:
-                logging.error(f"Error fetching posts: {e}")
+                logging.error(f"❌ Error fetching posts: {e}")
                 return []
     
     def check_comment_for_keywords(self, comment_text):
@@ -248,101 +382,95 @@ class InstagramBot:
         return None
     
     def send_dm(self, user_id, username, keyword):
-        """Send DM to user with the configured message and link"""
+        """Send DM with human-like behavior and better error handling"""
         try:
-            # Check login status before sending DM
-            if not self.check_login_status():
-                logging.error("Unable to verify login status before sending DM")
+            message = self.get_dm_message(keyword)
+            if not message:
+                logging.error(f"❌ No DM message configured for keyword: {keyword}")
                 return False
             
-            # Check if user follows us first (required for DMs in many cases)
-            try:
-                user_info = self.client.user_info(user_id)
-                if hasattr(user_info, 'is_private') and user_info.is_private:
-                    logging.warning(f"User @{username} has private account, DM may not be deliverable")
-                
-                # Check if the user follows us
-                friendship_status = self.client.user_friendship(user_id)
-                if not friendship_status.followed_by:
-                    logging.warning(f"User @{username} doesn't follow us, DM may be restricted")
-                    
-            except Exception as check_error:
-                logging.warning(f"Could not check user relationship for @{username}: {check_error}")
+            logging.info(f"📤 Sending DM to @{username} with keyword '{keyword}'")
             
-            message = Config.DM_MESSAGE.format(link=Config.DEFAULT_LINK)
+            # Add realistic delay before sending DM
+            time.sleep(random.uniform(2, 5))
             
-            # Try different DM methods based on message content
-            try:
-                # Method 1: Try regular text message first
-                if Config.DEFAULT_LINK not in message or not message.strip():
-                    # Pure text message
-                    self.client.direct_send(message, [user_id])
-                else:
-                    # Try sending as text with link (Instagram might handle links differently)
-                    # Split message to send text and link separately if needed
-                    self.client.direct_send(message, [user_id])
+            # Send the DM
+            thread = self.client.direct_send(message, [user_id])
+            
+            if thread:
+                logging.info(f"✅ DM sent successfully to @{username}")
                 
-                # Log the sent DM
-                self.db.log_sent_dm(user_id, username, message)
-                
-                logging.info(f"✅ DM sent to @{username} (keyword: {keyword})")
+                # Add longer delay after successful DM
+                time.sleep(random.uniform(3, 8))
                 return True
-                
-            except Exception as send_error:
-                error_msg = str(send_error).lower()
-                
-                if "403" in error_msg or "forbidden" in error_msg:
-                    logging.error(f"❌ DM blocked by Instagram to @{username} - User may have restricted DMs or doesn't follow you")
-                elif "400" in error_msg or "bad request" in error_msg:
-                    logging.error(f"❌ DM format error to @{username} - Message may contain restricted content")
-                elif "429" in error_msg or "rate" in error_msg:
-                    logging.error(f"❌ Rate limited while sending DM to @{username} - Too many DMs sent recently")
-                elif "login_required" in error_msg or "unauthorized" in error_msg:
-                    logging.warning(f"⚠️ Session expired while sending DM to @{username}, will retry next cycle")
-                else:
-                    logging.error(f"❌ Unexpected error sending DM to @{username}: {send_error}")
-                
+            else:
+                logging.error(f"❌ Failed to send DM to @{username} - no thread returned")
                 return False
-            
+                
         except Exception as e:
-            logging.error(f"❌ Critical error in send_dm to @{username}: {e}")
-            return False
+            error_msg = str(e).lower()
+            
+            if "challenge_required" in error_msg:
+                logging.error(f"❌ Challenge required when sending DM to @{username}")
+                # Don't mark as logged out, just skip this DM
+                return False
+            elif "rate" in error_msg or "wait" in error_msg or "429" in error_msg:
+                logging.warning(f"⏳ Rate limited when sending DM to @{username}")
+                time.sleep(random.uniform(20, 40))  # Longer delay for DM rates
+                return False
+            elif "login_required" in error_msg or "unauthorized" in error_msg or "401" in error_msg:
+                logging.warning(f"⚠️ Session expired when sending DM to @{username}")
+                self.logged_in = False
+                return False
+            elif "block" in error_msg or "spam" in error_msg:
+                logging.error(f"❌ Account may be blocked/flagged when sending DM to @{username}")
+                return False
+            else:
+                logging.error(f"❌ Unexpected error sending DM to @{username}: {e}")
+                return False
     
     def process_post_comments(self, post):
-        """Process comments on a single post"""
+        """Process comments on a single post with human-like patterns"""
         try:
-            logging.info(f"Fetching comments for post {post.code}...")
+            logging.info(f"🔍 Fetching comments for post {post.code}...")
             
             # Check login status before fetching comments
             if not self.check_login_status():
                 logging.error("Unable to verify login status before fetching comments")
                 return
             
+            # Add realistic delay before fetching comments
+            time.sleep(random.uniform(2, 5))
+            
             comments = self.client.media_comments(post.id)
             
             if not comments:
-                logging.info(f"No comments found on post {post.code}")
+                logging.info(f"💬 No comments found on post {post.code}")
                 return
                 
-            logging.info(f"Found {len(comments)} total comments on post {post.code}")
+            logging.info(f"💬 Found {len(comments)} total comments on post {post.code}")
             
             processed_count = 0
             already_processed_count = 0
             no_keyword_count = 0
             
-            for comment in comments:
+            for i, comment in enumerate(comments):
+                # Add small delay between comment processing to look human
+                if i > 0:
+                    time.sleep(random.uniform(0.5, 2))
+                
                 # Skip if already processed - use comment.pk instead of comment.id
                 if self.db.is_comment_processed(str(comment.pk)):
                     already_processed_count += 1
                     continue
                 
                 # Log the comment for debugging
-                logging.info(f"Checking comment from @{comment.user.username}: '{comment.text[:50]}...'")
+                logging.info(f"🔍 Checking comment from @{comment.user.username}: '{comment.text[:50]}...'")
                 
                 # Check for keywords
                 keyword = self.check_comment_for_keywords(comment.text)
                 if keyword:
-                    logging.info(f"KEYWORD MATCH! Found '{keyword}' in comment from @{comment.user.username}")
+                    logging.info(f"🎯 KEYWORD MATCH! Found '{keyword}' in comment from @{comment.user.username}")
                     
                     # Mark as processed first to avoid duplicates - use comment.pk
                     self.db.mark_comment_processed(
@@ -353,35 +481,42 @@ class InstagramBot:
                         keyword
                     )
                     
+                    # Add delay before sending DM to look more natural
+                    time.sleep(random.uniform(3, 8))
+                    
                     # Send DM
                     if self.send_dm(comment.user.pk, comment.user.username, keyword):
                         processed_count += 1
-                        logging.info(f"Successfully sent DM to @{comment.user.username}")
+                        logging.info(f"✅ Successfully sent DM to @{comment.user.username}")
                     else:
-                        logging.error(f"Failed to send DM to @{comment.user.username}")
+                        logging.error(f"❌ Failed to send DM to @{comment.user.username}")
                     
-                    # Add delay to avoid rate limiting
-                    time.sleep(2)
+                    # Add longer delay after DM to avoid rate limiting
+                    time.sleep(random.uniform(5, 12))
                 else:
                     no_keyword_count += 1
-                    logging.debug(f"No keyword match in comment from @{comment.user.username}")
+                    logging.debug(f"➖ No keyword match in comment from @{comment.user.username}")
             
             # Summary logging
-            logging.info(f"Comment processing summary for post {post.code}:")
+            logging.info(f"📊 Comment processing summary for post {post.code}:")
             logging.info(f"  - Total comments: {len(comments)}")
             logging.info(f"  - Already processed: {already_processed_count}")
             logging.info(f"  - No keywords found: {no_keyword_count}")
             logging.info(f"  - New DMs sent: {processed_count}")
             
             if processed_count > 0:
-                logging.info(f"Processed {processed_count} new comments on post {post.code}")
+                logging.info(f"🎉 Processed {processed_count} new comments on post {post.code}")
                 
         except Exception as e:
             error_msg = str(e).lower()
-            if "login_required" in error_msg or "unauthorized" in error_msg:
-                logging.warning(f"Session expired while processing comments for post {post.code}, will retry next cycle")
+            if "login_required" in error_msg or "unauthorized" in error_msg or "401" in error_msg:
+                logging.warning(f"⚠️ Session expired while processing comments for post {post.code}, will retry next cycle")
+                self.logged_in = False
+            elif "rate" in error_msg or "wait" in error_msg or "429" in error_msg:
+                logging.warning(f"⏳ Rate limited while processing comments for post {post.code}")
+                time.sleep(random.uniform(15, 30))
             else:
-                logging.error(f"Error processing comments for post {post.code}: {e}")
+                logging.error(f"❌ Error processing comments for post {post.code}: {e}")
     
     def run_monitoring_cycle(self):
         """Run one cycle of comment monitoring"""
@@ -455,4 +590,23 @@ class InstagramBot:
                 print()
                 
         except Exception as e:
-            logging.error(f"Error listing posts: {e}") 
+            logging.error(f"Error listing posts: {e}")
+    
+    def get_dm_message(self, keyword):
+        """Get the appropriate DM message for a keyword"""
+        try:
+            # Try to get custom messages from config first
+            if hasattr(Config, 'DM_MESSAGES') and isinstance(Config.DM_MESSAGES, dict):
+                if keyword in Config.DM_MESSAGES:
+                    return Config.DM_MESSAGES[keyword]
+            
+            # Fall back to default message
+            if hasattr(Config, 'DM_MESSAGE') and Config.DM_MESSAGE:
+                return Config.DM_MESSAGE.format(link=getattr(Config, 'DEFAULT_LINK', ''))
+            
+            # Ultimate fallback
+            return f"Hi! I saw your comment '{keyword}'. Here's the link you requested: {getattr(Config, 'DEFAULT_LINK', 'https://example.com')}"
+            
+        except Exception as e:
+            logging.error(f"Error getting DM message for keyword '{keyword}': {e}")
+            return None 
