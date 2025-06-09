@@ -30,6 +30,10 @@ class InstagramBot:
         try:
             logging.info("Attempting to login to Instagram...")
             
+            # Clear any existing session data if we're re-logging in
+            if hasattr(self, 'client'):
+                self.client = Client()  # Create fresh client instance
+            
             # Try to load existing session first
             session_file = "session.json"
             if os.path.exists(session_file):
@@ -41,13 +45,24 @@ class InstagramBot:
                     return True
                 except Exception as e:
                     logging.warning(f"Failed to use saved session: {e}")
+                    # Delete corrupted session file
+                    try:
+                        os.remove(session_file)
+                        logging.info("Removed corrupted session file")
+                    except:
+                        pass
                     # Continue with fresh login
+            
+            # Add delay to avoid rate limiting
+            time.sleep(3)
             
             # Try session ID login first (bypasses 2FA completely)
             session_id = os.getenv('INSTAGRAM_SESSION_ID', '').strip()
             if session_id:
                 logging.info("Attempting login with provided session ID...")
                 try:
+                    # Create fresh client for session ID login
+                    self.client = Client()
                     self.client.login_by_sessionid(session_id)
                     logging.info("Successfully logged in using session ID")
                     self.logged_in = True
@@ -60,6 +75,9 @@ class InstagramBot:
                 except Exception as session_error:
                     logging.warning(f"Session ID login failed: {session_error}")
                     logging.info("Falling back to backup code login...")
+                    # Clear client and try backup code
+                    self.client = Client()
+                    time.sleep(2)
             
             # Fallback to backup code login
             backup_code = os.getenv('INSTAGRAM_2FA_CODE', '').replace(' ', '')
@@ -198,18 +216,54 @@ OPTION 2: Use backup code
             logging.error(f"Error checking post filter criteria: {e}")
             return False
     
+    def check_login_status(self):
+        """Check if we're still logged in and re-login if needed"""
+        try:
+            # Try a simple API call to check if we're still logged in
+            self.client.account_info()
+            return True
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "login_required" in error_msg or "unauthorized" in error_msg or "403" in error_msg:
+                logging.warning("Session expired, attempting to re-login...")
+                self.logged_in = False
+                return self.login()
+            else:
+                logging.error(f"Login status check failed with unexpected error: {e}")
+                return False
+    
     def get_recent_posts(self, limit=None):
         """Get recent posts from the account"""
         if not limit:
             limit = Config.MAX_POSTS_TO_CHECK
             
         try:
+            # Check if we're still logged in first
+            if not self.check_login_status():
+                logging.error("Unable to verify login status")
+                return []
+                
             user_id = self.client.user_id_from_username(Config.INSTAGRAM_USERNAME)
             posts = self.client.user_medias(user_id, limit)
             return posts
         except Exception as e:
-            logging.error(f"Error fetching posts: {e}")
-            return []
+            error_msg = str(e).lower()
+            if "login_required" in error_msg or "unauthorized" in error_msg:
+                logging.warning("Session expired during post fetch, attempting re-login...")
+                if self.login():
+                    try:
+                        user_id = self.client.user_id_from_username(Config.INSTAGRAM_USERNAME)
+                        posts = self.client.user_medias(user_id, limit)
+                        return posts
+                    except Exception as retry_error:
+                        logging.error(f"Error fetching posts after re-login: {retry_error}")
+                        return []
+                else:
+                    logging.error("Re-login failed")
+                    return []
+            else:
+                logging.error(f"Error fetching posts: {e}")
+                return []
     
     def check_comment_for_keywords(self, comment_text):
         """Check if comment contains any of the monitored keywords"""
@@ -225,6 +279,11 @@ OPTION 2: Use backup code
     def send_dm(self, user_id, username, keyword):
         """Send DM to user with the configured message and link"""
         try:
+            # Check login status before sending DM
+            if not self.check_login_status():
+                logging.error("Unable to verify login status before sending DM")
+                return False
+            
             message = Config.DM_MESSAGE.format(link=Config.DEFAULT_LINK)
             
             # Send the DM
@@ -237,13 +296,23 @@ OPTION 2: Use backup code
             return True
             
         except Exception as e:
-            logging.error(f"Error sending DM to @{username}: {e}")
+            error_msg = str(e).lower()
+            if "login_required" in error_msg or "unauthorized" in error_msg:
+                logging.warning(f"Session expired while sending DM to @{username}, will retry next cycle")
+            else:
+                logging.error(f"Error sending DM to @{username}: {e}")
             return False
     
     def process_post_comments(self, post):
         """Process comments on a single post"""
         try:
             logging.info(f"Fetching comments for post {post.code}...")
+            
+            # Check login status before fetching comments
+            if not self.check_login_status():
+                logging.error("Unable to verify login status before fetching comments")
+                return
+            
             comments = self.client.media_comments(post.id)
             
             if not comments:
@@ -303,7 +372,11 @@ OPTION 2: Use backup code
                 logging.info(f"Processed {processed_count} new comments on post {post.code}")
                 
         except Exception as e:
-            logging.error(f"Error processing comments for post {post.code}: {e}")
+            error_msg = str(e).lower()
+            if "login_required" in error_msg or "unauthorized" in error_msg:
+                logging.warning(f"Session expired while processing comments for post {post.code}, will retry next cycle")
+            else:
+                logging.error(f"Error processing comments for post {post.code}: {e}")
     
     def run_monitoring_cycle(self):
         """Run one cycle of comment monitoring"""
