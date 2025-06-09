@@ -12,19 +12,21 @@ class Config:
     
     # Keywords to monitor (can be modified)
     KEYWORDS = [
-        'dm me',
-        'send link',
+        'interested',
         'info',
-        'details',
-        'interested'
+        'details', 
+        'link',
+        'dm me',
+        'send me',
+        'how',
+        'tell me more',
+        'want to know'
     ]
     
-    # DM message template
-    DM_MESSAGE = """Hi! Thanks for your interest! 
+    # DM message template for encouragement replies
+    DM_MESSAGE = """Thanks for reaching out! Here's what you requested: {link}
 
-Here's the link you requested: {link}
-
-Let me know if you have any questions!"""
+Feel free to ask if you have any questions! 🙂"""
     
     # Default link to send (can be customized)
     DEFAULT_LINK = "https://your-website.com"

@@ -11,7 +11,7 @@ class Database:
         conn = sqlite3.connect(self.db_file)
         cursor = conn.cursor()
         
-        # Table to track processed comments
+        # Table to track processed comments (updated for new workflow)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS processed_comments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -19,7 +19,9 @@ class Database:
                 user_id TEXT,
                 username TEXT,
                 post_id TEXT,
+                comment_text TEXT,
                 keyword TEXT,
+                action_taken TEXT,
                 processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
@@ -35,6 +37,16 @@ class Database:
             )
         ''')
         
+        # Add missing columns to existing table if they don't exist
+        cursor.execute("PRAGMA table_info(processed_comments)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'comment_text' not in columns:
+            cursor.execute('ALTER TABLE processed_comments ADD COLUMN comment_text TEXT')
+        
+        if 'action_taken' not in columns:
+            cursor.execute('ALTER TABLE processed_comments ADD COLUMN action_taken TEXT')
+        
         conn.commit()
         conn.close()
     
@@ -49,18 +61,23 @@ class Database:
         conn.close()
         return result is not None
     
-    def mark_comment_processed(self, comment_id, user_id, username, post_id, keyword):
-        """Mark a comment as processed"""
+    def add_processed_comment(self, comment_id, post_id, username, user_id, comment_text, keyword, action_taken):
+        """Add a processed comment with detailed tracking"""
         conn = sqlite3.connect(self.db_file)
         cursor = conn.cursor()
         
         cursor.execute('''
-            INSERT INTO processed_comments (comment_id, user_id, username, post_id, keyword)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (comment_id, user_id, username, post_id, keyword))
+            INSERT OR REPLACE INTO processed_comments 
+            (comment_id, user_id, username, post_id, comment_text, keyword, action_taken)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (comment_id, user_id, username, post_id, comment_text, keyword, action_taken))
         
         conn.commit()
         conn.close()
+    
+    def mark_comment_processed(self, comment_id, user_id, username, post_id, keyword):
+        """Mark a comment as processed (backward compatibility)"""
+        self.add_processed_comment(comment_id, post_id, username, user_id, '', keyword, 'legacy_dm_sent')
     
     def log_sent_dm(self, user_id, username, message):
         """Log a sent DM"""
@@ -81,7 +98,7 @@ class Database:
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT username, keyword, processed_at 
+            SELECT username, keyword, action_taken, processed_at 
             FROM processed_comments 
             ORDER BY processed_at DESC 
             LIMIT ?
@@ -89,4 +106,29 @@ class Database:
         
         results = cursor.fetchall()
         conn.close()
-        return results 
+        return results
+    
+    def get_comment_stats(self):
+        """Get statistics about processed comments"""
+        conn = sqlite3.connect(self.db_file)
+        cursor = conn.cursor()
+        
+        # Get counts by action type
+        cursor.execute('''
+            SELECT action_taken, COUNT(*) as count
+            FROM processed_comments 
+            GROUP BY action_taken
+        ''')
+        
+        action_counts = dict(cursor.fetchall())
+        
+        # Get total count
+        cursor.execute('SELECT COUNT(*) FROM processed_comments')
+        total_count = cursor.fetchone()[0]
+        
+        conn.close()
+        
+        return {
+            'total_processed': total_count,
+            'action_counts': action_counts
+        } 
