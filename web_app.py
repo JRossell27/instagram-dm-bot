@@ -647,14 +647,21 @@ def auth_instagram_callback():
             flash(f'Token exchange failed: {token_json.get("error_message", "Unknown error")}', 'error')
             return redirect(url_for('dashboard'))
         
-        # Check if we have the expected data structure
-        if 'data' not in token_json or not token_json['data']:
+        # Handle both old format (wrapped in 'data') and new direct format
+        if 'data' in token_json and isinstance(token_json['data'], list) and token_json['data']:
+            # Old format: response wrapped in 'data' array
+            token_data_response = token_json['data'][0]
+            logging.info("Using old token response format (wrapped in 'data')")
+        elif 'access_token' in token_json:
+            # New format: direct response
+            token_data_response = token_json
+            logging.info("Using new token response format (direct)")
+        else:
             logging.error(f"Unexpected token response format: {token_json}")
             flash('Unexpected response format from Instagram. Please try again.', 'error')
             return redirect(url_for('dashboard'))
         
         # Extract token data
-        token_data_response = token_json['data'][0]
         access_token = token_data_response.get('access_token')
         user_id = token_data_response.get('user_id')
         permissions = token_data_response.get('permissions', [])
