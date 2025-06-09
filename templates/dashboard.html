@@ -95,9 +95,17 @@
                 <h5 class="mb-0">
                     <i class="fas fa-cog me-2"></i>Configuration Overview
                 </h5>
-                <a href="{{ url_for('config_page') }}" class="btn btn-sm btn-outline-primary">
-                    Edit Configuration
-                </a>
+                <div class="btn-group" role="group">
+                    <a href="/manage_keywords" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-tags me-1"></i>Keywords & Settings
+                    </a>
+                    <a href="/manage_posts" class="btn btn-sm btn-outline-info">
+                        <i class="fas fa-list-check me-1"></i>Manage Posts
+                    </a>
+                    <a href="{{ url_for('config_page') }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-cog me-1"></i>Full Configuration
+                    </a>
+                </div>
             </div>
             <div class="card-body">
                 <div class="row">
@@ -128,6 +136,21 @@
                             {% if not stats.specific_posts and not stats.required_hashtags and not stats.required_phrases %}
                                 <span class="badge bg-warning">No filters configured</span>
                             {% endif %}
+                        {% endif %}
+                        
+                        <h6 class="text-muted mb-2 mt-3">DM Message Preview</h6>
+                        <div class="small bg-light p-2 rounded">
+                            {% if stats.dm_message %}
+                                "{{ stats.dm_message[:100] }}{% if stats.dm_message|length > 100 %}...{% endif %}"
+                            {% else %}
+                                <em class="text-muted">No DM message configured</em>
+                            {% endif %}
+                        </div>
+                        {% if stats.default_link %}
+                            <div class="mt-1">
+                                <small class="text-muted">Link: </small>
+                                <small class="text-primary">{{ stats.default_link }}</small>
+                            </div>
                         {% endif %}
                     </div>
                     

@@ -1,6 +1,6 @@
 import time
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from instagrapi import Client
 from instagrapi.exceptions import LoginRequired, ChallengeRequired, PleaseWaitFewMinutes
 from config import Config
@@ -161,9 +161,16 @@ OPTION 2: Use backup code
                         logging.info(f"Monitoring post {post_code} - contains required phrase: {word}")
                         return True
             
-            # Option 5: Check post age
+            # Option 5: Check post age - fix timezone comparison
             if Config.MAX_POST_AGE_DAYS:
-                cutoff_date = datetime.now() - timedelta(days=Config.MAX_POST_AGE_DAYS)
+                # Make both datetimes timezone-aware for comparison
+                if post_date.tzinfo is None:
+                    # If post_date is naive, assume it's UTC
+                    post_date = post_date.replace(tzinfo=timezone.utc)
+                
+                # Create cutoff date as timezone-aware
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=Config.MAX_POST_AGE_DAYS)
+                
                 if post_date < cutoff_date:
                     logging.debug(f"Skipping post {post_code} - too old ({post_date})")
                     return False

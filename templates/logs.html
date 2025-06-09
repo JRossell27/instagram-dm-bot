@@ -64,34 +64,69 @@
                 </h5>
             </div>
             <div class="card-body">
-                {% set error_count = logs|select('search', 'ERROR')|list|length %}
-                {% set warning_count = logs|select('search', 'WARNING')|list|length %}
-                {% set info_count = logs|select('search', 'INFO')|list|length %}
-                {% set dm_sent_count = logs|select('search', 'DM sent')|list|length %}
-                
-                <div class="row text-center">
-                    <div class="col-md-3">
-                        <div class="border rounded p-3 {% if error_count > 0 %}bg-danger bg-opacity-10{% endif %}">
-                            <h4 class="{% if error_count > 0 %}text-danger{% else %}text-muted{% endif %}">{{ error_count }}</h4>
-                            <small class="text-muted">Errors</small>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="border rounded p-3 {% if warning_count > 0 %}bg-warning bg-opacity-10{% endif %}">
-                            <h4 class="{% if warning_count > 0 %}text-warning{% else %}text-muted{% endif %}">{{ warning_count }}</h4>
-                            <small class="text-muted">Warnings</small>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="border rounded p-3 {% if info_count > 0 %}bg-info bg-opacity-10{% endif %}">
-                            <h4 class="{% if info_count > 0 %}text-info{% else %}text-muted{% endif %}">{{ info_count }}</h4>
-                            <small class="text-muted">Info Messages</small>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="border rounded p-3 {% if dm_sent_count > 0 %}bg-success bg-opacity-10{% endif %}">
-                            <h4 class="{% if dm_sent_count > 0 %}text-success{% else %}text-muted{% endif %}">{{ dm_sent_count }}</h4>
-                            <small class="text-muted">DMs Sent</small>
+                <!-- Log Statistics -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-chart-bar me-2"></i>Log Statistics
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    {% set error_count = 0 %}
+                                    {% set warning_count = 0 %}
+                                    {% set info_count = 0 %}
+                                    {% set dm_sent_count = 0 %}
+                                    
+                                    {% for log in logs %}
+                                        {% if 'ERROR' in log %}
+                                            {% set error_count = error_count + 1 %}
+                                        {% elif 'WARNING' in log %}
+                                            {% set warning_count = warning_count + 1 %}
+                                        {% elif 'INFO' in log %}
+                                            {% set info_count = info_count + 1 %}
+                                        {% endif %}
+                                        {% if 'DM sent' in log %}
+                                            {% set dm_sent_count = dm_sent_count + 1 %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    <div class="col-md-3">
+                                        <div class="card border-danger">
+                                            <div class="card-body">
+                                                <h4 class="text-danger">{{ error_count }}</h4>
+                                                <p class="mb-0">Errors</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card border-warning">
+                                            <div class="card-body">
+                                                <h4 class="text-warning">{{ warning_count }}</h4>
+                                                <p class="mb-0">Warnings</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card border-info">
+                                            <div class="card-body">
+                                                <h4 class="text-info">{{ info_count }}</h4>
+                                                <p class="mb-0">Info</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card border-success">
+                                            <div class="card-body">
+                                                <h4 class="text-success">{{ dm_sent_count }}</h4>
+                                                <p class="mb-0">DMs Sent</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

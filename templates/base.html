@@ -95,6 +95,18 @@
                             </a>
                         </li>
                         <li class="nav-item mb-2">
+                            <a class="nav-link {% if request.endpoint == 'manage_posts' %}active{% endif %}" href="{{ url_for('manage_posts') }}">
+                                <i class="fas fa-list-check me-2"></i>
+                                Manage Posts
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link {% if request.endpoint == 'manage_keywords' %}active{% endif %}" href="{{ url_for('manage_keywords') }}">
+                                <i class="fas fa-tags me-2"></i>
+                                Keywords & Settings
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
                             <a class="nav-link {% if request.endpoint == 'config_page' %}active{% endif %}" href="{{ url_for('config_page') }}">
                                 <i class="fas fa-cog me-2"></i>
                                 Configuration

@@ -142,6 +142,8 @@ def dashboard():
             'required_hashtags': Config.REQUIRED_HASHTAGS,
             'required_phrases': Config.REQUIRED_CAPTION_WORDS,
             'max_age_days': Config.MAX_POST_AGE_DAYS,
+            'dm_message': Config.DM_MESSAGE,
+            'default_link': Config.DEFAULT_LINK,
         }
         
         return render_template('dashboard.html', 
@@ -300,6 +302,122 @@ def api_stats():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/manage_posts')
+def manage_posts():
+    """Manage specific posts to monitor"""
+    try:
+        if not bot or not bot.logged_in:
+            return render_template('manage_posts.html', 
+                                 error="Please login first to see your posts",
+                                 bot_status=bot_status)
+        
+        # Get recent posts for selection
+        recent_posts = bot.get_recent_posts(20)  # Get more posts for management
+        
+        # Get current monitored posts from config
+        current_posts = Config.SPECIFIC_POST_IDS if hasattr(Config, 'SPECIFIC_POST_IDS') else []
+        
+        # Format posts for display
+        formatted_posts = []
+        for post in recent_posts:
+            formatted_posts.append({
+                'code': post.code,
+                'url': f"https://www.instagram.com/p/{post.code}/",
+                'caption': (post.caption_text[:100] + "...") if post.caption_text else "No caption",
+                'date': post.taken_at.strftime("%Y-%m-%d %H:%M"),
+                'monitored': post.code in current_posts
+            })
+        
+        return render_template('manage_posts.html', 
+                             posts=formatted_posts,
+                             current_posts=current_posts,
+                             bot_status=bot_status)
+                             
+    except Exception as e:
+        logging.error(f"Error in manage_posts: {e}")
+        return render_template('manage_posts.html', 
+                             error=f"Error loading posts: {e}",
+                             bot_status=bot_status)
+
+@app.route('/update_monitored_posts', methods=['POST'])
+def update_monitored_posts():
+    """Update which posts should be monitored"""
+    try:
+        selected_posts = request.form.getlist('selected_posts')
+        
+        # Update config with selected posts
+        Config.SPECIFIC_POST_IDS = selected_posts
+        Config.MONITOR_ALL_POSTS = len(selected_posts) == 0  # If no specific posts, monitor all
+        
+        # Save to config file (you might want to implement this)
+        flash(f"Updated monitoring for {len(selected_posts)} posts", 'success')
+        
+        return redirect('/manage_posts')
+        
+    except Exception as e:
+        logging.error(f"Error updating monitored posts: {e}")
+        flash(f"Error updating posts: {e}", 'error')
+        return redirect('/manage_posts')
+
+@app.route('/manage_keywords')
+def manage_keywords():
+    """Manage keywords and filtering settings"""
+    try:
+        current_settings = {
+            'keywords': Config.KEYWORDS,
+            'required_hashtags': getattr(Config, 'REQUIRED_HASHTAGS', []),
+            'required_words': getattr(Config, 'REQUIRED_CAPTION_WORDS', []),
+            'max_post_age': getattr(Config, 'MAX_POST_AGE_DAYS', 7),
+            'only_with_links': getattr(Config, 'ONLY_POSTS_WITH_LINKS', False),
+            'monitor_all_posts': getattr(Config, 'MONITOR_ALL_POSTS', True),
+            'dm_message': Config.DM_MESSAGE,
+            'default_link': Config.DEFAULT_LINK
+        }
+        
+        return render_template('manage_keywords.html', 
+                             settings=current_settings,
+                             bot_status=bot_status)
+                             
+    except Exception as e:
+        logging.error(f"Error in manage_keywords: {e}")
+        return render_template('manage_keywords.html', 
+                             error=f"Error loading settings: {e}",
+                             bot_status=bot_status)
+
+@app.route('/update_keywords', methods=['POST'])
+def update_keywords():
+    """Update keywords and filtering settings"""
+    try:
+        # Update keywords
+        keywords_text = request.form.get('keywords', '').strip()
+        Config.KEYWORDS = [k.strip() for k in keywords_text.split('\n') if k.strip()]
+        
+        # Update hashtags
+        hashtags_text = request.form.get('required_hashtags', '').strip()
+        Config.REQUIRED_HASHTAGS = [h.strip() for h in hashtags_text.split('\n') if h.strip()]
+        
+        # Update caption words
+        words_text = request.form.get('required_words', '').strip()
+        Config.REQUIRED_CAPTION_WORDS = [w.strip() for w in words_text.split('\n') if w.strip()]
+        
+        # Update other settings
+        Config.MAX_POST_AGE_DAYS = int(request.form.get('max_post_age', 7))
+        Config.ONLY_POSTS_WITH_LINKS = 'only_with_links' in request.form
+        Config.MONITOR_ALL_POSTS = 'monitor_all_posts' in request.form
+        
+        # Update DM settings
+        Config.DM_MESSAGE = request.form.get('dm_message', Config.DM_MESSAGE)
+        Config.DEFAULT_LINK = request.form.get('default_link', Config.DEFAULT_LINK)
+        
+        flash("Settings updated successfully!", 'success')
+        
+        return redirect('/manage_keywords')
+        
+    except Exception as e:
+        logging.error(f"Error updating keywords: {e}")
+        flash(f"Error updating settings: {e}", 'error')
+        return redirect('/manage_keywords')
 
 if __name__ == '__main__':
     # Initialize on startup
