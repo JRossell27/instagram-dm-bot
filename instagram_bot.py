@@ -5,6 +5,7 @@ from instagrapi import Client
 from instagrapi.exceptions import LoginRequired, ChallengeRequired, PleaseWaitFewMinutes
 from config import Config
 from database import Database
+import os
 
 # Set up logging
 logging.basicConfig(
@@ -23,21 +24,59 @@ class InstagramBot:
         self.logged_in = False
         
     def login(self):
-        """Login to Instagram"""
+        """Login to Instagram with 2FA support"""
         try:
-            self.client.login(Config.INSTAGRAM_USERNAME, Config.INSTAGRAM_PASSWORD)
-            self.logged_in = True
-            logging.info(f"Successfully logged in as {Config.INSTAGRAM_USERNAME}")
-            return True
-        except LoginRequired:
-            logging.error("Login failed - please check credentials")
-            return False
-        except ChallengeRequired as e:
-            logging.error(f"Challenge required: {e}")
-            return False
+            logging.info("Attempting to login to Instagram...")
+            
+            # Try to load existing session first
+            session_file = "session.json"
+            if os.path.exists(session_file):
+                try:
+                    self.client.load_settings(session_file)
+                    self.client.login(self.username, self.password)
+                    logging.info("Logged in using saved session")
+                    self.logged_in = True
+                    return True
+                except Exception as e:
+                    logging.warning(f"Failed to use saved session: {e}")
+                    # Continue with fresh login
+            
+            # Fresh login attempt
+            try:
+                self.client.login(self.username, self.password)
+                logging.info("Successfully logged in to Instagram")
+                self.logged_in = True
+                
+                # Save session for future use
+                self.client.dump_settings(session_file)
+                logging.info("Session saved for future logins")
+                
+                return True
+                
+            except Exception as login_error:
+                error_msg = str(login_error).lower()
+                
+                # Check for specific error types
+                if "two_factor_required" in error_msg or "2fa" in error_msg:
+                    logging.error("2FA is enabled - please check solution options")
+                    raise Exception("Instagram 2FA is enabled. Please see setup instructions for 2FA handling.")
+                elif "challenge_required" in error_msg:
+                    logging.error("Instagram challenge required - account may be flagged")
+                    raise Exception("Instagram requires verification. Try logging in manually first.")
+                elif "invalid_user" in error_msg or "bad_password" in error_msg:
+                    logging.error("Invalid username or password")
+                    raise Exception("Invalid Instagram username or password. Please check credentials.")
+                elif "rate_limit" in error_msg:
+                    logging.error("Rate limited by Instagram")
+                    raise Exception("Instagram rate limit reached. Please try again later.")
+                else:
+                    logging.error(f"Login failed: {login_error}")
+                    raise Exception(f"Instagram login failed: {login_error}")
+                    
         except Exception as e:
-            logging.error(f"Login error: {e}")
-            return False
+            self.logged_in = False
+            logging.error(f"Instagram login error: {e}")
+            raise e
     
     def should_monitor_post(self, post):
         """Check if a post should be monitored based on filtering criteria"""
