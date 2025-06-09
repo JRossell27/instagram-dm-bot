@@ -38,6 +38,11 @@ bot_status = {
     'error_message': None
 }
 
+@app.context_processor
+def inject_bot_status():
+    """Make bot_status available to all templates"""
+    return dict(bot_status=bot_status)
+
 def init_bot():
     """Initialize the Instagram bot"""
     global bot
@@ -204,20 +209,26 @@ def run_once():
 @app.route('/config')
 def config_page():
     """Configuration page"""
-    config_data = {
-        'keywords': Config.KEYWORDS,
-        'dm_message': Config.DM_MESSAGE,
-        'default_link': Config.DEFAULT_LINK,
-        'check_interval': Config.CHECK_INTERVAL,
-        'monitor_all_posts': Config.MONITOR_ALL_POSTS,
-        'specific_post_ids': Config.SPECIFIC_POST_IDS,
-        'required_hashtags': Config.REQUIRED_HASHTAGS,
-        'required_caption_words': Config.REQUIRED_CAPTION_WORDS,
-        'max_post_age_days': Config.MAX_POST_AGE_DAYS,
-        'only_posts_with_links': Config.ONLY_POSTS_WITH_LINKS,
-    }
-    
-    return render_template('config.html', config=config_data)
+    try:
+        config_data = {
+            'keywords': Config.KEYWORDS,
+            'dm_message': Config.DM_MESSAGE,
+            'default_link': Config.DEFAULT_LINK,
+            'check_interval': Config.CHECK_INTERVAL,
+            'monitor_all_posts': Config.MONITOR_ALL_POSTS,
+            'specific_post_ids': Config.SPECIFIC_POST_IDS,
+            'required_hashtags': Config.REQUIRED_HASHTAGS,
+            'required_caption_words': Config.REQUIRED_CAPTION_WORDS,
+            'max_post_age_days': Config.MAX_POST_AGE_DAYS,
+            'only_posts_with_links': Config.ONLY_POSTS_WITH_LINKS,
+        }
+        
+        return render_template('config.html', config=config_data, bot_status=bot_status)
+        
+    except Exception as e:
+        logging.error(f"Config page error: {e}")
+        flash(f'Error loading configuration: {str(e)}', 'error')
+        return render_template('config.html', config={}, bot_status=bot_status)
 
 @app.route('/posts')
 def posts_page():
@@ -226,7 +237,7 @@ def posts_page():
         if not bot or not bot.logged_in:
             if not init_bot():
                 flash(f'Failed to connect to Instagram: {bot_status["error_message"]}', 'error')
-                return render_template('posts.html', posts=[])
+                return render_template('posts.html', posts=[], bot_status=bot_status)
         
         posts = bot.get_recent_posts(15)  # Get more posts for selection
         posts_data = []
@@ -241,12 +252,12 @@ def posts_page():
             }
             posts_data.append(post_info)
         
-        return render_template('posts.html', posts=posts_data)
+        return render_template('posts.html', posts=posts_data, bot_status=bot_status)
         
     except Exception as e:
         logging.error(f"Posts page error: {e}")
         flash(f'Error loading posts: {str(e)}', 'error')
-        return render_template('posts.html', posts=[])
+        return render_template('posts.html', posts=[], bot_status=bot_status)
 
 @app.route('/logs')
 def logs_page():
@@ -261,12 +272,12 @@ def logs_page():
                 log_entries = lines[-100:] if len(lines) > 100 else lines
                 log_entries.reverse()  # Show newest first
         
-        return render_template('logs.html', logs=log_entries)
+        return render_template('logs.html', logs=log_entries, bot_status=bot_status)
         
     except Exception as e:
         logging.error(f"Logs page error: {e}")
         flash(f'Error loading logs: {str(e)}', 'error')
-        return render_template('logs.html', logs=[])
+        return render_template('logs.html', logs=[], bot_status=bot_status)
 
 @app.route('/api/status')
 def api_status():
@@ -294,5 +305,8 @@ if __name__ == '__main__':
     # Initialize on startup
     init_bot()
     
-    # Start in development mode
-    app.run(host='0.0.0.0', port=5000, debug=True) 
+    # Check if running in production
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_ENV') == 'development'
+    
+    app.run(host='0.0.0.0', port=port, debug=debug) 

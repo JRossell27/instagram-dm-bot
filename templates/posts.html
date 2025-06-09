@@ -163,9 +163,10 @@
                 </div>
                 
                 {% if monitored_count > 0 %}
+                    {% set progress_width = (monitored_count / total_count * 100)|round %}
                     <div class="progress mb-3" style="height: 8px;">
                         <div class="progress-bar bg-success" role="progressbar" 
-                             style="width: {{ (monitored_count / total_count * 100)|round }}%">
+                             style="width: {{ progress_width }}%">
                         </div>
                     </div>
                 {% endif %}
