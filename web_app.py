@@ -606,17 +606,17 @@ def auth_instagram_callback():
             error_description = request.args.get('error_description', 'Unknown error')
             logging.error(f"Instagram OAuth error: {error} - {error_description}")
             flash(f'Instagram authentication failed: {error_description}', 'error')
-            return redirect(url_for('instagram_login_pro_page'))
+            return redirect(url_for('dashboard'))
         
         # Verify state parameter for security
         if not state or state != session.get('oauth_state'):
             logging.error("Invalid OAuth state parameter")
             flash('Invalid authentication state. Please try again.', 'error')
-            return redirect(url_for('instagram_login_pro_page'))
+            return redirect(url_for('dashboard'))
         
         if not code:
             flash('No authorization code received from Instagram.', 'error')
-            return redirect(url_for('instagram_login_pro_page'))
+            return redirect(url_for('dashboard'))
         
         # Exchange authorization code for access token
         token_url = "https://api.instagram.com/oauth/access_token"
@@ -629,27 +629,40 @@ def auth_instagram_callback():
         }
         
         logging.info("Exchanging authorization code for access token...")
+        logging.info(f"Token request data: {token_data}")
         token_response = requests.post(token_url, data=token_data)
+        
+        logging.info(f"Token response status: {token_response.status_code}")
+        logging.info(f"Token response body: {token_response.text}")
         
         if token_response.status_code != 200:
             logging.error(f"Token exchange failed: {token_response.status_code} - {token_response.text}")
-            flash('Failed to exchange authorization code for access token.', 'error')
-            return redirect(url_for('instagram_login_pro_page'))
+            flash(f'Failed to exchange authorization code for access token. Status: {token_response.status_code}', 'error')
+            return redirect(url_for('dashboard'))
         
         token_json = token_response.json()
         
         if 'error' in token_json:
             logging.error(f"Token exchange error: {token_json}")
             flash(f'Token exchange failed: {token_json.get("error_message", "Unknown error")}', 'error')
-            return redirect(url_for('instagram_login_pro_page'))
+            return redirect(url_for('dashboard'))
+        
+        # Check if we have the expected data structure
+        if 'data' not in token_json or not token_json['data']:
+            logging.error(f"Unexpected token response format: {token_json}")
+            flash('Unexpected response format from Instagram. Please try again.', 'error')
+            return redirect(url_for('dashboard'))
         
         # Extract token data
-        access_token = token_json['data'][0]['access_token']
-        user_id = token_json['data'][0]['user_id']
-        permissions = token_json['data'][0]['permissions']
+        token_data_response = token_json['data'][0]
+        access_token = token_data_response.get('access_token')
+        user_id = token_data_response.get('user_id')
+        permissions = token_data_response.get('permissions', [])
         
-        logging.info(f"Successfully obtained access token for user ID: {user_id}")
-        logging.info(f"Granted permissions: {permissions}")
+        if not access_token or not user_id:
+            logging.error(f"Missing access_token or user_id in response: {token_json}")
+            flash('Invalid token response from Instagram. Please try again.', 'error')
+            return redirect(url_for('dashboard'))
         
         # Exchange short-lived token for long-lived token (60 days)
         long_lived_url = "https://graph.instagram.com/access_token"
@@ -712,7 +725,7 @@ def auth_instagram_callback():
     except Exception as e:
         logging.error(f"OAuth callback error: {e}")
         flash(f'OAuth authentication failed: {str(e)}', 'error')
-        return redirect(url_for('instagram_login_pro_page'))
+        return redirect(url_for('dashboard'))
 
 @app.route('/update_instagram_login', methods=['POST'])
 def update_instagram_login():
