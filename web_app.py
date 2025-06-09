@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from threading import Thread
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session
 from flask_cors import CORS
 from apscheduler.schedulers.background import BackgroundScheduler
 from instagram_bot import InstagramBot
@@ -12,6 +12,9 @@ from config import Config
 from database import Database
 import time
 import random
+import requests
+import secrets
+import urllib.parse
 
 # Configure logging
 logging.basicConfig(
@@ -550,72 +553,165 @@ def instagram_login_page():
 
 @app.route('/instagram-login-pro')
 def instagram_login_pro_page():
-    """Professional Instagram login page (OAUTH STYLE)"""
-    return render_template('instagram_login.html')
+    """Professional Instagram login page with REAL OAuth"""
+    # Pass Instagram App ID to template for OAuth URL generation
+    return render_template('instagram_login.html', instagram_app_id=Config.INSTAGRAM_APP_ID)
 
 @app.route('/auth/instagram')
 def auth_instagram():
-    """Instagram OAuth-style authentication redirect"""
+    """Start Instagram Business OAuth flow"""
     try:
-        # Generate a state parameter for security
-        import secrets
+        # Check if Instagram App credentials are configured
+        if not Config.INSTAGRAM_APP_ID or not Config.INSTAGRAM_APP_SECRET:
+            flash('Instagram Business App credentials not configured. Please set INSTAGRAM_APP_ID and INSTAGRAM_APP_SECRET environment variables.', 'error')
+            return redirect(url_for('instagram_login_pro_page'))
+        
+        # Generate secure state parameter for CSRF protection
         state = secrets.token_urlsafe(32)
-        
-        # Store state in session for later verification
-        from flask import session
         session['oauth_state'] = state
+        session['oauth_start_time'] = datetime.now().isoformat()
         
-        # For now, we'll redirect to Instagram's login page with a special message
-        # In a real OAuth flow, this would be Instagram's authorization endpoint
-        # But since Instagram doesn't have public OAuth for DM bots, we'll simulate the experience
+        # Instagram Business Login OAuth URL
+        redirect_uri = urllib.parse.quote(request.url_root + 'auth/instagram/callback', safe='')
+        scope = urllib.parse.quote('instagram_business_basic,instagram_business_manage_messages', safe='')
         
-        # Create a professional-looking login page that guides users through the process
-        return render_template('oauth_login.html', state=state)
+        oauth_url = (
+            f"https://www.instagram.com/oauth/authorize?"
+            f"client_id={Config.INSTAGRAM_APP_ID}&"
+            f"redirect_uri={redirect_uri}&"
+            f"response_type=code&"
+            f"scope={scope}&"
+            f"state={state}"
+        )
+        
+        logging.info(f"Starting Instagram OAuth flow with redirect URI: {redirect_uri}")
+        return redirect(oauth_url)
         
     except Exception as e:
-        logging.error(f"OAuth redirect error: {e}")
-        flash(f'OAuth authentication failed: {str(e)}', 'error')
+        logging.error(f"OAuth start error: {e}")
+        flash(f'Failed to start Instagram authentication: {str(e)}', 'error')
         return redirect(url_for('instagram_login_pro_page'))
 
 @app.route('/auth/instagram/callback')
 def auth_instagram_callback():
-    """Handle Instagram OAuth callback"""
+    """Handle Instagram Business OAuth callback"""
     try:
-        # Get the session ID from the callback (user will paste it)
-        session_id = request.args.get('session_id')
+        # Get authorization code and state from callback
+        code = request.args.get('code')
         state = request.args.get('state')
+        error = request.args.get('error')
         
-        # Verify state parameter
-        from flask import session as flask_session
-        if state != flask_session.get('oauth_state'):
+        # Handle OAuth errors
+        if error:
+            error_description = request.args.get('error_description', 'Unknown error')
+            logging.error(f"Instagram OAuth error: {error} - {error_description}")
+            flash(f'Instagram authentication failed: {error_description}', 'error')
+            return redirect(url_for('instagram_login_pro_page'))
+        
+        # Verify state parameter for security
+        if not state or state != session.get('oauth_state'):
+            logging.error("Invalid OAuth state parameter")
             flash('Invalid authentication state. Please try again.', 'error')
             return redirect(url_for('instagram_login_pro_page'))
         
-        if session_id:
-            # Validate session ID format
-            if len(session_id) < 20:
-                flash('Invalid session ID format. Please try again.', 'error')
-                return redirect(url_for('instagram_login_pro_page'))
-            
-            # Update configuration with new session ID
-            Config.INSTAGRAM_SESSION_ID = session_id
-            Config.save_runtime_config()
-            
-            # Reset bot login status
-            global bot
-            if bot:
-                bot.logged_in = False
-                bot.last_login_check = None
-            
-            flash('✅ Instagram login successful! Session configured automatically.', 'success')
-            return redirect(url_for('dashboard'))
-        else:
-            flash('No session ID received. Please try again.', 'error')
+        if not code:
+            flash('No authorization code received from Instagram.', 'error')
             return redirect(url_for('instagram_login_pro_page'))
+        
+        # Exchange authorization code for access token
+        token_url = "https://api.instagram.com/oauth/access_token"
+        token_data = {
+            'client_id': Config.INSTAGRAM_APP_ID,
+            'client_secret': Config.INSTAGRAM_APP_SECRET,
+            'grant_type': 'authorization_code',
+            'redirect_uri': request.url_root + 'auth/instagram/callback',
+            'code': code
+        }
+        
+        logging.info("Exchanging authorization code for access token...")
+        token_response = requests.post(token_url, data=token_data)
+        
+        if token_response.status_code != 200:
+            logging.error(f"Token exchange failed: {token_response.status_code} - {token_response.text}")
+            flash('Failed to exchange authorization code for access token.', 'error')
+            return redirect(url_for('instagram_login_pro_page'))
+        
+        token_json = token_response.json()
+        
+        if 'error' in token_json:
+            logging.error(f"Token exchange error: {token_json}")
+            flash(f'Token exchange failed: {token_json.get("error_message", "Unknown error")}', 'error')
+            return redirect(url_for('instagram_login_pro_page'))
+        
+        # Extract token data
+        access_token = token_json['data'][0]['access_token']
+        user_id = token_json['data'][0]['user_id']
+        permissions = token_json['data'][0]['permissions']
+        
+        logging.info(f"Successfully obtained access token for user ID: {user_id}")
+        logging.info(f"Granted permissions: {permissions}")
+        
+        # Exchange short-lived token for long-lived token (60 days)
+        long_lived_url = "https://graph.instagram.com/access_token"
+        long_lived_params = {
+            'grant_type': 'ig_exchange_token',
+            'client_secret': Config.INSTAGRAM_APP_SECRET,
+            'access_token': access_token
+        }
+        
+        logging.info("Exchanging for long-lived access token...")
+        long_lived_response = requests.get(long_lived_url, params=long_lived_params)
+        
+        if long_lived_response.status_code == 200:
+            long_lived_json = long_lived_response.json()
+            if 'access_token' in long_lived_json:
+                access_token = long_lived_json['access_token']
+                expires_in = long_lived_json.get('expires_in', 5184000)  # 60 days default
+                logging.info(f"Successfully obtained long-lived token (expires in {expires_in} seconds)")
+            else:
+                logging.warning("Failed to get long-lived token, using short-lived token")
+        else:
+            logging.warning(f"Long-lived token exchange failed: {long_lived_response.status_code}")
+        
+        # Save credentials to configuration
+        Config.INSTAGRAM_ACCESS_TOKEN = access_token
+        Config.INSTAGRAM_USER_ID = user_id
+        Config.save_runtime_config()
+        
+        # Clear OAuth session data
+        session.pop('oauth_state', None)
+        session.pop('oauth_start_time', None)
+        
+        # Test the token by making a simple API call
+        test_url = f"https://graph.instagram.com/v21.0/{user_id}"
+        test_params = {
+            'fields': 'id,username,account_type',
+            'access_token': access_token
+        }
+        
+        test_response = requests.get(test_url, params=test_params)
+        if test_response.status_code == 200:
+            user_info = test_response.json()
+            username = user_info.get('username', 'Unknown')
+            account_type = user_info.get('account_type', 'Unknown')
             
+            logging.info(f"Token validation successful - Username: {username}, Account Type: {account_type}")
+            flash(f'✅ Instagram Business authentication successful! Connected as @{username} ({account_type})', 'success')
+        else:
+            logging.warning(f"Token validation failed: {test_response.status_code}")
+            flash('✅ Instagram authentication successful, but unable to validate account details.', 'success')
+        
+        # Reset bot to use new authentication method if it exists
+        global bot
+        if bot:
+            bot.logged_in = False
+            bot.last_login_check = None
+        
+        return redirect(url_for('dashboard'))
+        
     except Exception as e:
         logging.error(f"OAuth callback error: {e}")
-        flash(f'OAuth callback failed: {str(e)}', 'error')
+        flash(f'OAuth authentication failed: {str(e)}', 'error')
         return redirect(url_for('instagram_login_pro_page'))
 
 @app.route('/update_instagram_login', methods=['POST'])

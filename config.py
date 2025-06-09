@@ -72,6 +72,15 @@ Let me know if you have any questions!"""
     # Runtime configuration file
     RUNTIME_CONFIG_FILE = "runtime_config.json"
     
+    # Instagram Business API OAuth Configuration (NEW)
+    INSTAGRAM_APP_ID = os.getenv('INSTAGRAM_APP_ID', '')
+    INSTAGRAM_APP_SECRET = os.getenv('INSTAGRAM_APP_SECRET', '')
+    INSTAGRAM_ACCESS_TOKEN = os.getenv('INSTAGRAM_ACCESS_TOKEN', '')
+    INSTAGRAM_USER_ID = os.getenv('INSTAGRAM_USER_ID', '')
+    
+    # OAuth state for security
+    OAUTH_STATE_SECRET = os.getenv('OAUTH_STATE_SECRET', '')
+    
     @classmethod
     def load_runtime_config(cls):
         """Load configuration from runtime_config.json if it exists"""
@@ -84,6 +93,17 @@ Let me know if you have any questions!"""
                 for key, value in config_data.items():
                     if hasattr(cls, key):
                         setattr(cls, key, value)
+                
+                cls.CHECK_INTERVAL = config_data.get('CHECK_INTERVAL', cls.CHECK_INTERVAL)
+                cls.MAX_POSTS_TO_CHECK = config_data.get('MAX_POSTS_TO_CHECK', cls.MAX_POSTS_TO_CHECK)
+                cls.INSTAGRAM_SESSION_ID = config_data.get('INSTAGRAM_SESSION_ID', cls.INSTAGRAM_SESSION_ID)
+                
+                # Load Instagram Business API OAuth settings
+                cls.INSTAGRAM_APP_ID = config_data.get('INSTAGRAM_APP_ID', cls.INSTAGRAM_APP_ID)
+                cls.INSTAGRAM_APP_SECRET = config_data.get('INSTAGRAM_APP_SECRET', cls.INSTAGRAM_APP_SECRET)
+                cls.INSTAGRAM_ACCESS_TOKEN = config_data.get('INSTAGRAM_ACCESS_TOKEN', cls.INSTAGRAM_ACCESS_TOKEN)
+                cls.INSTAGRAM_USER_ID = config_data.get('INSTAGRAM_USER_ID', cls.INSTAGRAM_USER_ID)
+                cls.OAUTH_STATE_SECRET = config_data.get('OAUTH_STATE_SECRET', cls.OAUTH_STATE_SECRET)
                 
                 print("✅ Runtime configuration loaded successfully")
                 return True
@@ -111,7 +131,12 @@ Let me know if you have any questions!"""
                 'DEFAULT_LINK': cls.DEFAULT_LINK,
                 'CHECK_INTERVAL': cls.CHECK_INTERVAL,
                 'MAX_POSTS_TO_CHECK': cls.MAX_POSTS_TO_CHECK,
-                'INSTAGRAM_SESSION_ID': cls.INSTAGRAM_SESSION_ID
+                'INSTAGRAM_SESSION_ID': cls.INSTAGRAM_SESSION_ID,
+                'INSTAGRAM_APP_ID': cls.INSTAGRAM_APP_ID,
+                'INSTAGRAM_APP_SECRET': cls.INSTAGRAM_APP_SECRET,
+                'INSTAGRAM_ACCESS_TOKEN': cls.INSTAGRAM_ACCESS_TOKEN,
+                'INSTAGRAM_USER_ID': cls.INSTAGRAM_USER_ID,
+                'OAUTH_STATE_SECRET': cls.OAUTH_STATE_SECRET
             }
             
             with open('runtime_config.json', 'w') as f:
