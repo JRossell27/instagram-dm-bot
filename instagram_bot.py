@@ -43,9 +43,18 @@ class InstagramBot:
                     logging.warning(f"Failed to use saved session: {e}")
                     # Continue with fresh login
             
-            # Fresh login attempt
+            # Fresh login attempt with 2FA support
             try:
-                self.client.login(self.username, self.password)
+                # Check if we have a 2FA verification code in environment variables
+                verification_code = os.getenv('INSTAGRAM_2FA_CODE', '').replace(' ', '')
+                
+                if verification_code:
+                    logging.info("Using provided 2FA verification code")
+                    self.client.login(self.username, self.password, verification_code=verification_code)
+                else:
+                    # Try login without 2FA first
+                    self.client.login(self.username, self.password)
+                    
                 logging.info("Successfully logged in to Instagram")
                 self.logged_in = True
                 
@@ -59,9 +68,13 @@ class InstagramBot:
                 error_msg = str(login_error).lower()
                 
                 # Check for specific error types
-                if "two_factor_required" in error_msg or "2fa" in error_msg:
-                    logging.error("2FA is enabled - please check solution options")
-                    raise Exception("Instagram 2FA is enabled. Please see setup instructions for 2FA handling.")
+                if "two_factor_required" in error_msg or "2fa" in error_msg or "verification_code" in error_msg:
+                    if not os.getenv('INSTAGRAM_2FA_CODE'):
+                        logging.error("2FA required but no verification code provided")
+                        raise Exception("Instagram 2FA required. Please add INSTAGRAM_2FA_CODE environment variable with your backup code (without spaces).")
+                    else:
+                        logging.error("2FA code may be invalid or expired")
+                        raise Exception("Instagram 2FA code invalid or expired. Please update INSTAGRAM_2FA_CODE with a fresh backup code.")
                 elif "challenge_required" in error_msg:
                     logging.error("Instagram challenge required - account may be flagged")
                     raise Exception("Instagram requires verification. Try logging in manually first.")
