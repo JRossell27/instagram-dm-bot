@@ -24,78 +24,51 @@ class InstagramBot:
         self.logged_in = False
         self.username = Config.INSTAGRAM_USERNAME
         self.password = Config.INSTAGRAM_PASSWORD
+        self.last_login_check = None
+        self.login_check_interval = 300  # Only check login status every 5 minutes
+        self.last_login_attempt = None
+        self.login_retry_delay = 600  # Wait 10 minutes between failed login attempts
         
     def login(self):
-        """Login to Instagram with session ID or backup code support"""
+        """Login to Instagram using session ID only"""
         try:
-            logging.info("Attempting to login to Instagram...")
+            # Check if we've recently failed a login attempt
+            if (self.last_login_attempt and 
+                (datetime.now() - self.last_login_attempt).total_seconds() < self.login_retry_delay):
+                logging.warning(f"Waiting {self.login_retry_delay} seconds between login attempts to avoid rate limiting")
+                return False
+                
+            logging.info("Attempting to login to Instagram using session ID...")
             
-            # Clear any existing session data if we're re-logging in
-            if hasattr(self, 'client'):
-                self.client = Client()  # Create fresh client instance
+            # Get session ID from config first, then fall back to environment variable
+            session_id = getattr(Config, 'INSTAGRAM_SESSION_ID', None) or os.getenv('INSTAGRAM_SESSION_ID', '').strip()
             
-            # Try to load existing session first
-            session_file = "session.json"
-            if os.path.exists(session_file):
-                try:
-                    self.client.load_settings(session_file)
-                    self.client.login(self.username, self.password)
-                    logging.info("Logged in using saved session")
-                    self.logged_in = True
-                    return True
-                except Exception as e:
-                    logging.warning(f"Failed to use saved session: {e}")
-                    # Delete corrupted session file
-                    try:
-                        os.remove(session_file)
-                        logging.info("Removed corrupted session file")
-                    except:
-                        pass
-                    # Continue with fresh login
+            if not session_id:
+                logging.error("No Instagram session ID provided")
+                self.last_login_attempt = datetime.now()
+                raise Exception("""Instagram session ID required. To get your session ID:
+
+1. Login to Instagram in your browser
+2. Press F12 → Application → Cookies → instagram.com  
+3. Find 'sessionid' cookie and copy its value
+4. Update it in the web interface under Settings → Instagram Login""")
+            
+            # Create fresh client for session ID login
+            self.client = Client()
             
             # Add delay to avoid rate limiting
             time.sleep(3)
             
-            # Try session ID login first (bypasses 2FA completely)
-            session_id = os.getenv('INSTAGRAM_SESSION_ID', '').strip()
-            if session_id:
-                logging.info("Attempting login with provided session ID...")
-                try:
-                    # Create fresh client for session ID login
-                    self.client = Client()
-                    self.client.login_by_sessionid(session_id)
-                    logging.info("Successfully logged in using session ID")
-                    self.logged_in = True
-                    
-                    # Save session for future use
-                    self.client.dump_settings(session_file)
-                    logging.info("Session saved for future logins")
-                    
-                    return True
-                except Exception as session_error:
-                    logging.warning(f"Session ID login failed: {session_error}")
-                    logging.info("Falling back to backup code login...")
-                    # Clear client and try backup code
-                    self.client = Client()
-                    time.sleep(2)
-            
-            # Fallback to backup code login
-            backup_code = os.getenv('INSTAGRAM_2FA_CODE', '').replace(' ', '')
-            
-            if backup_code:
-                # Login with backup code
-                logging.info("Using provided backup code for login...")
-                self.client.login(self.username, self.password, verification_code=backup_code)
-                logging.info("Successfully logged in using backup code")
-            else:
-                # Login without 2FA
-                logging.info("No backup code provided, attempting login without 2FA...")
-                self.client.login(self.username, self.password)
-                logging.info("Successfully logged in without 2FA")
+            # Login with session ID
+            logging.info("Logging in with session ID...")
+            self.client.login_by_sessionid(session_id)
+            logging.info("✅ Successfully logged in using session ID")
             
             self.logged_in = True
+            self.last_login_check = datetime.now()
             
             # Save session for future use
+            session_file = "session.json"
             self.client.dump_settings(session_file)
             logging.info("Session saved for future logins")
             
@@ -103,40 +76,22 @@ class InstagramBot:
                     
         except Exception as e:
             self.logged_in = False
+            self.last_login_attempt = datetime.now()
             error_msg = str(e).lower()
             
             # Provide specific error messages
-            if "security code" in error_msg or "check the security code" in error_msg:
-                logging.error("Instagram backup code rejected")
-                raise Exception("""Instagram backup code rejected. This usually means:
-1. The backup code has already been used (each can only be used once)
-2. The backup code is invalid or expired
-3. Instagram is rejecting automated login attempts
+            if "sessionid" in error_msg or "invalid session" in error_msg:
+                logging.error("Instagram session ID expired or invalid")
+                raise Exception("""Instagram session ID expired or invalid. To get a new session ID:
 
-BETTER SOLUTION - Use Session ID instead:
 1. Login to Instagram in your browser manually
 2. Press F12 → Application → Cookies → instagram.com
-3. Find 'sessionid' cookie and copy its value
-4. Add INSTAGRAM_SESSION_ID environment variable in Render
-5. Remove INSTAGRAM_2FA_CODE variable
-6. Session ID bypasses 2FA completely!""")
-            elif "two_factor_required" in error_msg or "two-factor authentication required" in error_msg:
-                logging.error("2FA required but no backup code provided")
-                raise Exception("""Instagram 2FA required. Two options:
-
-OPTION 1 (Recommended): Use Session ID
-- Login manually in browser
-- Extract sessionid cookie (F12 → Application → Cookies)
-- Add INSTAGRAM_SESSION_ID environment variable
-
-OPTION 2: Use backup code
-- Add INSTAGRAM_2FA_CODE environment variable with backup code""")
+3. Find 'sessionid' cookie and copy its value  
+4. Update it in the web interface under Settings → Instagram Login
+5. Session IDs typically last 1-3 months""")
             elif "challenge_required" in error_msg:
                 logging.error("Instagram challenge required")
-                raise Exception("Instagram requires verification. Try logging in manually first to complete any challenges.")
-            elif "invalid_user" in error_msg or "bad_password" in error_msg:
-                logging.error("Invalid credentials")
-                raise Exception("Invalid Instagram username or password. Please check credentials.")
+                raise Exception("Instagram requires verification. Login manually in browser first to complete any challenges, then get a new session ID.")
             elif "rate_limit" in error_msg or "too many" in error_msg:
                 logging.error("Rate limited by Instagram")
                 raise Exception("Instagram rate limit reached. Please wait a few hours before trying again.")
@@ -218,19 +173,39 @@ OPTION 2: Use backup code
     
     def check_login_status(self):
         """Check if we're still logged in and re-login if needed"""
+        
+        # If we just did a login check recently, don't check again
+        if (self.last_login_check and 
+            (datetime.now() - self.last_login_check).total_seconds() < self.login_check_interval):
+            return self.logged_in
+        
+        # If we recently failed a login attempt, wait before trying again
+        if (self.last_login_attempt and 
+            (datetime.now() - self.last_login_attempt).total_seconds() < self.login_retry_delay):
+            logging.warning("Waiting before next login attempt due to recent failure")
+            return self.logged_in
+        
         try:
             # Try a simple API call to check if we're still logged in
             self.client.account_info()
+            self.logged_in = True
+            self.last_login_check = datetime.now()
             return True
         except Exception as e:
             error_msg = str(e).lower()
+            self.last_login_check = datetime.now()
+            
             if "login_required" in error_msg or "unauthorized" in error_msg or "403" in error_msg:
-                logging.warning("Session expired, attempting to re-login...")
+                logging.warning("Session expired, marking as logged out")
                 self.logged_in = False
-                return self.login()
+                # Don't automatically re-login here to avoid rate limiting
+                return False
+            elif "rate" in error_msg or "wait" in error_msg:
+                logging.warning("Rate limited during login check, assuming still logged in")
+                return self.logged_in  # Don't change login status if rate limited
             else:
                 logging.error(f"Login status check failed with unexpected error: {e}")
-                return False
+                return self.logged_in  # Keep current status on unexpected errors
     
     def get_recent_posts(self, limit=None):
         """Get recent posts from the account"""
@@ -238,29 +213,25 @@ OPTION 2: Use backup code
             limit = Config.MAX_POSTS_TO_CHECK
             
         try:
-            # Check if we're still logged in first
-            if not self.check_login_status():
-                logging.error("Unable to verify login status")
-                return []
-                
+            # Only do login check if we're not logged in or session seems expired
+            if not self.logged_in:
+                if not self.login():
+                    logging.error("Unable to login")
+                    return []
+                    
             user_id = self.client.user_id_from_username(Config.INSTAGRAM_USERNAME)
             posts = self.client.user_medias(user_id, limit)
             return posts
         except Exception as e:
             error_msg = str(e).lower()
-            if "login_required" in error_msg or "unauthorized" in error_msg:
-                logging.warning("Session expired during post fetch, attempting re-login...")
-                if self.login():
-                    try:
-                        user_id = self.client.user_id_from_username(Config.INSTAGRAM_USERNAME)
-                        posts = self.client.user_medias(user_id, limit)
-                        return posts
-                    except Exception as retry_error:
-                        logging.error(f"Error fetching posts after re-login: {retry_error}")
-                        return []
-                else:
-                    logging.error("Re-login failed")
-                    return []
+            if ("login_required" in error_msg or "unauthorized" in error_msg) and self.logged_in:
+                logging.warning("Session expired during post fetch, will attempt re-login on next cycle")
+                self.logged_in = False
+                self.last_login_attempt = datetime.now()
+                return []
+            elif "rate" in error_msg or "wait" in error_msg:
+                logging.warning("Rate limited while fetching posts - will retry next cycle")
+                return []
             else:
                 logging.error(f"Error fetching posts: {e}")
                 return []

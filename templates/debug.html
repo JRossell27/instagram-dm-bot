@@ -10,32 +10,94 @@
             <strong>Debug Information:</strong> This page helps identify why DMs might not be sent.
         </div>
         
+        <!-- Configuration Status -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-heartbeat me-2"></i>Configuration Status
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if debug.config_status == 'success' %}
+                            <div class="alert alert-success" role="alert">
+                                <i class="fas fa-check-circle me-2"></i>
+                                {{ debug.status_message }}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning" role="alert">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                {{ debug.status_message }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Issues Section -->
-        {% if debug.issues %}
-        <div class="card mb-4">
-            <div class="card-header bg-danger text-white">
-                <h5 class="mb-0">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Issues Found
-                </h5>
-            </div>
-            <div class="card-body">
-                {% for issue in debug.issues %}
-                    <div class="alert alert-warning mb-2">{{ issue }}</div>
-                {% endfor %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Configuration Issues
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if debug.login_issues %}
+                            <h6 class="text-danger">Instagram Login Issues:</h6>
+                            <ul class="list-unstyled">
+                                {% for issue in debug.login_issues %}
+                                <li class="mb-2">
+                                    <i class="fas fa-times-circle text-danger me-2"></i>{{ issue }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            <a href="{{ url_for('instagram_login_page') }}" class="btn btn-primary btn-sm">
+                                <i class="fab fa-instagram me-1"></i>Fix Instagram Login
+                            </a>
+                        {% endif %}
+                        
+                        {% if debug.keyword_issues %}
+                            <h6 class="text-warning">Keyword Issues:</h6>
+                            <ul class="list-unstyled">
+                                {% for issue in debug.keyword_issues %}
+                                <li class="mb-2">
+                                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>{{ issue }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            <a href="{{ url_for('keywords_page') }}" class="btn btn-warning btn-sm">
+                                <i class="fas fa-tags me-1"></i>Fix Keywords
+                            </a>
+                        {% endif %}
+                        
+                        {% if debug.post_issues %}
+                            <h6 class="text-info">Post Monitoring Issues:</h6>
+                            <ul class="list-unstyled">
+                                {% for issue in debug.post_issues %}
+                                <li class="mb-2">
+                                    <i class="fas fa-info-circle text-info me-2"></i>{{ issue }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            <a href="{{ url_for('posts_page') }}" class="btn btn-info btn-sm">
+                                <i class="fas fa-images me-1"></i>Fix Posts
+                            </a>
+                        {% endif %}
+                        
+                        {% if not debug.login_issues and not debug.keyword_issues and not debug.post_issues %}
+                            <p class="text-success mb-0">
+                                <i class="fas fa-check-circle me-2"></i>
+                                No configuration issues found!
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
-        {% else %}
-        <div class="card mb-4">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0">
-                    <i class="fas fa-check me-2"></i>Configuration Looks Good
-                </h5>
-            </div>
-            <div class="card-body">
-                <p class="text-success mb-0">No obvious configuration issues detected.</p>
-            </div>
-        </div>
-        {% endif %}
         
         <!-- Configuration Status -->
         <div class="card mb-4">
@@ -47,50 +109,55 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <h6 class="text-muted">Keywords</h6>
-                        {% if debug.config.keywords %}
-                            {% for keyword in debug.config.keywords %}
-                                <span class="badge bg-primary me-1 mb-1">{{ keyword }}</span>
-                            {% endfor %}
-                        {% else %}
-                            <span class="text-muted">None configured</span>
-                        {% endif %}
+                        <h6 class="text-primary">Instagram Account</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Username:</strong> {{ debug.config.instagram_username or 'Not set' }}</li>
+                            <li><strong>Session ID:</strong> 
+                                {% if debug.config.has_session_id %}
+                                    <span class="text-success">{{ debug.config.session_id_preview }}</span>
+                                {% else %}
+                                    <span class="text-danger">Not configured</span>
+                                {% endif %}
+                            </li>
+                        </ul>
                         
-                        <h6 class="text-muted mt-3">Post Monitoring</h6>
-                        {% if debug.config.monitor_all_posts %}
-                            <span class="badge bg-success">Monitoring ALL posts</span>
-                        {% elif debug.config.specific_post_ids %}
-                            <span class="badge bg-info">{{ debug.config.specific_post_ids|length }} specific posts</span>
-                        {% else %}
-                            <span class="badge bg-danger">No posts being monitored</span>
-                        {% endif %}
-                        
-                        <h6 class="text-muted mt-3">Bot Status</h6>
-                        <span class="badge bg-{{ 'success' if debug.bot_logged_in else 'danger' }}">
-                            {{ 'Logged In' if debug.bot_logged_in else 'Not Logged In' }}
-                        </span>
-                        
-                        <h6 class="text-muted mt-3">Runtime Config</h6>
-                        <span class="badge bg-{{ 'success' if debug.runtime_config_exists else 'warning' }}">
-                            {{ 'Exists' if debug.runtime_config_exists else 'Not Found' }}
-                        </span>
+                        <h6 class="text-primary">Keywords</h6>
+                        <ul class="list-unstyled">
+                            {% if debug.config.keywords %}
+                                {% for keyword in debug.config.keywords %}
+                                <li><span class="badge bg-secondary">{{ keyword }}</span></li>
+                                {% endfor %}
+                            {% else %}
+                                <li class="text-muted">No keywords configured</li>
+                            {% endif %}
+                        </ul>
                     </div>
-                    
                     <div class="col-md-6">
-                        <h6 class="text-muted">DM Message Preview</h6>
-                        <div class="bg-light p-3 rounded mb-3">
-                            <small>{{ debug.config.dm_message[:100] }}{{ '...' if debug.config.dm_message|length > 100 else '' }}</small>
-                        </div>
+                        <h6 class="text-primary">Post Monitoring</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Monitor All Posts:</strong> 
+                                <span class="badge {{ 'bg-success' if debug.config.monitor_all_posts else 'bg-warning' }}">
+                                    {{ 'Yes' if debug.config.monitor_all_posts else 'No' }}
+                                </span>
+                            </li>
+                            <li><strong>Specific Posts:</strong>
+                                {% if debug.config.specific_post_ids %}
+                                    {% for post_id in debug.config.specific_post_ids %}
+                                    <span class="badge bg-info">{{ post_id }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted">None selected</span>
+                                {% endif %}
+                            </li>
+                        </ul>
                         
-                        <h6 class="text-muted">Default Link</h6>
-                        <p><code>{{ debug.config.default_link }}</code></p>
-                        
-                        {% if debug.config.specific_post_ids %}
-                        <h6 class="text-muted">Monitored Post IDs</h6>
-                        {% for post_id in debug.config.specific_post_ids %}
-                            <div><code>{{ post_id }}</code></div>
-                        {% endfor %}
-                        {% endif %}
+                        <h6 class="text-primary">Settings</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Check Interval:</strong> {{ debug.config.check_interval }} seconds</li>
+                            <li><strong>Default Link:</strong> 
+                                <small class="text-truncate d-block">{{ debug.config.default_link }}</small>
+                            </li>
+                        </ul>
                     </div>
                 </div>
             </div>

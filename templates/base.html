@@ -87,56 +87,29 @@
                         </h5>
                     </div>
                     
-                    <ul class="nav flex-column">
-                        <li class="nav-item mb-2">
-                            <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">
-                                <i class="fas fa-tachometer-alt me-2"></i>
-                                Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item mb-2">
-                            <a class="nav-link {% if request.endpoint == 'manage_posts' %}active{% endif %}" href="{{ url_for('manage_posts') }}">
-                                <i class="fas fa-list-check me-2"></i>
-                                Manage Posts
-                            </a>
-                        </li>
-                        <li class="nav-item mb-2">
-                            <a class="nav-link {% if request.endpoint == 'manage_keywords' %}active{% endif %}" href="{{ url_for('manage_keywords') }}">
-                                <i class="fas fa-tags me-2"></i>
-                                Keywords & Settings
-                            </a>
-                        </li>
-                        <li class="nav-item mb-2">
-                            <a class="nav-link {% if request.endpoint == 'settings_page' %}active{% endif %}" href="{{ url_for('settings_page') }}">
-                                <i class="fas fa-sliders-h me-2"></i>
-                                General Settings
-                            </a>
-                        </li>
-                        <li class="nav-item mb-2">
-                            <a class="nav-link {% if request.endpoint == 'config_page' %}active{% endif %}" href="{{ url_for('config_page') }}">
-                                <i class="fas fa-cog me-2"></i>
-                                Configuration
-                            </a>
-                        </li>
-                        <li class="nav-item mb-2">
-                            <a class="nav-link {% if request.endpoint == 'posts_page' %}active{% endif %}" href="{{ url_for('posts_page') }}">
-                                <i class="fas fa-images me-2"></i>
-                                Posts
-                            </a>
-                        </li>
-                        <li class="nav-item mb-2">
-                            <a class="nav-link {% if request.endpoint == 'logs_page' %}active{% endif %}" href="{{ url_for('logs_page') }}">
-                                <i class="fas fa-file-alt me-2"></i>
-                                Logs
-                            </a>
-                        </li>
-                        <li class="nav-item mb-2">
-                            <a class="nav-link {% if request.endpoint == 'debug_page' %}active{% endif %}" href="{{ url_for('debug_page') }}">
-                                <i class="fas fa-bug me-2"></i>
-                                Debug
-                            </a>
-                        </li>
-                    </ul>
+                    <div class="list-group">
+                        <a href="{{ url_for('dashboard') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'dashboard' }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                        </a>
+                        <a href="{{ url_for('posts_page') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'posts_page' }}">
+                            <i class="fas fa-images me-2"></i>Manage Posts
+                        </a>
+                        <a href="{{ url_for('keywords_page') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'keywords_page' }}">
+                            <i class="fas fa-tags me-2"></i>Manage Keywords
+                        </a>
+                        <a href="{{ url_for('settings_page') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'settings_page' }}">
+                            <i class="fas fa-cog me-2"></i>General Settings
+                        </a>
+                        <a href="{{ url_for('instagram_login_page') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'instagram_login_page' }}">
+                            <i class="fab fa-instagram me-2"></i>Instagram Login
+                        </a>
+                        <a href="{{ url_for('logs') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'logs' }}">
+                            <i class="fas fa-file-alt me-2"></i>View Logs
+                        </a>
+                        <a href="{{ url_for('debug_page') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'debug_page' }}">
+                            <i class="fas fa-bug me-2"></i>Debug
+                        </a>
+                    </div>
                     
                     <hr class="text-white-50">
                     

@@ -429,50 +429,49 @@ def update_keywords():
 def debug_page():
     """Debug page to help troubleshoot configuration issues"""
     try:
+        # Check Instagram login status
+        login_issues = []
+        if not Config.INSTAGRAM_SESSION_ID:
+            login_issues.append("No Instagram session ID configured")
+        elif len(Config.INSTAGRAM_SESSION_ID) < 20:
+            login_issues.append("Instagram session ID appears too short")
+        
+        # Check keyword issues
+        keyword_issues = []
+        if not Config.KEYWORDS:
+            keyword_issues.append("No keywords configured")
+        
+        # Check post issues
+        post_issues = []
+        if not Config.MONITOR_ALL_POSTS and not Config.SPECIFIC_POST_IDS:
+            post_issues.append("❌ No posts being monitored - set MONITOR_ALL_POSTS=True or select specific posts")
+        
+        # Overall status
+        if login_issues or keyword_issues or post_issues:
+            config_status = "warning"
+            status_message = "Configuration has issues"
+        else:
+            config_status = "success" 
+            status_message = "Configuration looks good"
+        
         debug_info = {
+            'config_status': config_status,
+            'status_message': status_message,
+            'login_issues': login_issues,
+            'keyword_issues': keyword_issues,
+            'post_issues': post_issues,
             'config': {
+                'instagram_username': Config.INSTAGRAM_USERNAME,
+                'has_session_id': bool(Config.INSTAGRAM_SESSION_ID),
+                'session_id_preview': (Config.INSTAGRAM_SESSION_ID[:20] + "...") if Config.INSTAGRAM_SESSION_ID else None,
                 'keywords': Config.KEYWORDS,
                 'monitor_all_posts': Config.MONITOR_ALL_POSTS,
                 'specific_post_ids': Config.SPECIFIC_POST_IDS,
-                'required_hashtags': Config.REQUIRED_HASHTAGS,
-                'required_caption_words': Config.REQUIRED_CAPTION_WORDS,
-                'max_post_age_days': Config.MAX_POST_AGE_DAYS,
                 'dm_message': Config.DM_MESSAGE,
                 'default_link': Config.DEFAULT_LINK,
-            },
-            'bot_logged_in': bot and bot.logged_in,
-            'runtime_config_exists': os.path.exists(Config.RUNTIME_CONFIG_FILE),
-            'issues': []
+                'check_interval': Config.CHECK_INTERVAL
+            }
         }
-        
-        # Check for common issues
-        if not Config.MONITOR_ALL_POSTS and not Config.SPECIFIC_POST_IDS:
-            debug_info['issues'].append("❌ No posts being monitored - set MONITOR_ALL_POSTS=True or select specific posts")
-        
-        if not Config.KEYWORDS:
-            debug_info['issues'].append("❌ No keywords configured")
-            
-        if Config.DEFAULT_LINK == "https://your-website.com":
-            debug_info['issues'].append("⚠️ Default link not customized")
-            
-        if not (bot and bot.logged_in):
-            debug_info['issues'].append("❌ Bot not logged in to Instagram")
-        
-        # Try to get recent posts info if logged in
-        if bot and bot.logged_in:
-            try:
-                recent_posts = bot.get_recent_posts(5)
-                debug_info['recent_posts'] = []
-                for post in recent_posts:
-                    is_monitored = bot.should_monitor_post(post)
-                    debug_info['recent_posts'].append({
-                        'code': post.code,
-                        'date': post.taken_at.strftime("%Y-%m-%d %H:%M"),
-                        'caption_preview': (post.caption_text[:50] + "...") if post.caption_text else "No caption",
-                        'is_monitored': is_monitored
-                    })
-            except Exception as e:
-                debug_info['posts_error'] = str(e)
         
         return render_template('debug.html', debug=debug_info, bot_status=bot_status)
         
@@ -530,6 +529,53 @@ def settings_page():
         logging.error(f"Settings page error: {e}")
         flash(f'Error loading settings: {str(e)}', 'error')
         return render_template('settings.html', settings={}, bot_status=bot_status)
+
+@app.route('/instagram_login')
+def instagram_login_page():
+    """Instagram login credentials management page"""
+    try:
+        login_data = {
+            'username': Config.INSTAGRAM_USERNAME,
+            'has_session_id': bool(Config.INSTAGRAM_SESSION_ID),
+            'session_id_preview': (Config.INSTAGRAM_SESSION_ID[:20] + "...") if Config.INSTAGRAM_SESSION_ID else None,
+        }
+        
+        return render_template('instagram_login.html', login=login_data, bot_status=bot_status)
+        
+    except Exception as e:
+        logging.error(f"Instagram login page error: {e}")
+        flash(f'Error loading Instagram login: {str(e)}', 'error')
+        return render_template('instagram_login.html', login={}, bot_status=bot_status)
+
+@app.route('/update_instagram_login', methods=['POST'])
+def update_instagram_login():
+    """Update Instagram login credentials"""
+    try:
+        # Update session ID
+        session_id = request.form.get('session_id', '').strip()
+        if session_id:
+            Config.INSTAGRAM_SESSION_ID = session_id
+            flash('✅ Instagram session ID updated successfully!', 'success')
+            
+            # Force re-login on next bot cycle
+            global bot
+            if bot:
+                bot.logged_in = False
+                bot.last_login_check = None
+                
+        else:
+            flash('❌ Session ID cannot be empty', 'error')
+            return redirect('/instagram_login')
+        
+        # Save configuration changes to persist across restarts
+        Config.save_runtime_config()
+        
+        return redirect('/instagram_login')
+        
+    except Exception as e:
+        logging.error(f"Error updating Instagram login: {e}")
+        flash(f"Error updating login: {e}", 'error')
+        return redirect('/instagram_login')
 
 if __name__ == '__main__':
     # Load runtime configuration on startup
