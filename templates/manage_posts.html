@@ -126,13 +126,13 @@
                     <div class="col-md-4">
                         <div class="text-center">
                             <div class="mb-2">
-                                <i class="fas fa-target fa-2x {% if monitor_all or (posts and any(p.is_monitored for p in posts)) %}text-success{% else %}text-warning{% endif %}"></i>
+                                <i class="fas fa-target fa-2x {% if monitor_all or (posts | selectattr('is_monitored') | list | length > 0) %}text-success{% else %}text-warning{% endif %}"></i>
                             </div>
                             <h6>Monitoring Strategy</h6>
-                            <span class="badge {% if monitor_all %}bg-success{% elif posts and any(p.is_monitored for p in posts) %}bg-info{% else %}bg-warning{% endif %}">
+                            <span class="badge {% if monitor_all %}bg-success{% elif posts | selectattr('is_monitored') | list | length > 0 %}bg-info{% else %}bg-warning{% endif %}">
                                 {% if monitor_all %}
                                     All Posts
-                                {% elif posts and any(p.is_monitored for p in posts) %}
+                                {% elif posts | selectattr('is_monitored') | list | length > 0 %}
                                     {{ posts | selectattr('is_monitored') | list | length }} Selected Posts
                                 {% else %}
                                     No Posts Monitored
