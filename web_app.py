@@ -533,7 +533,7 @@ def settings_page():
 
 @app.route('/instagram_login')
 def instagram_login_page():
-    """Instagram login credentials management page"""
+    """Instagram login credentials management page (MANUAL METHOD)"""
     try:
         login_data = {
             'username': Config.INSTAGRAM_USERNAME,
@@ -541,16 +541,86 @@ def instagram_login_page():
             'session_id_preview': (Config.INSTAGRAM_SESSION_ID[:20] + "...") if Config.INSTAGRAM_SESSION_ID else None,
         }
         
-        return render_template('instagram_login.html', login=login_data, bot_status=bot_status)
+        return render_template('instagram_login_manual.html', login=login_data, bot_status=bot_status)
         
     except Exception as e:
         logging.error(f"Instagram login page error: {e}")
         flash(f'Error loading Instagram login: {str(e)}', 'error')
-        return render_template('instagram_login.html', login={}, bot_status=bot_status)
+        return render_template('instagram_login_manual.html', login={}, bot_status=bot_status)
+
+@app.route('/instagram-login-pro')
+def instagram_login_pro_page():
+    """Professional Instagram login page (OAUTH STYLE)"""
+    return render_template('instagram_login.html')
+
+@app.route('/auth/instagram')
+def auth_instagram():
+    """Instagram OAuth-style authentication redirect"""
+    try:
+        # Generate a state parameter for security
+        import secrets
+        state = secrets.token_urlsafe(32)
+        
+        # Store state in session for later verification
+        from flask import session
+        session['oauth_state'] = state
+        
+        # For now, we'll redirect to Instagram's login page with a special message
+        # In a real OAuth flow, this would be Instagram's authorization endpoint
+        # But since Instagram doesn't have public OAuth for DM bots, we'll simulate the experience
+        
+        # Create a professional-looking login page that guides users through the process
+        return render_template('oauth_login.html', state=state)
+        
+    except Exception as e:
+        logging.error(f"OAuth redirect error: {e}")
+        flash(f'OAuth authentication failed: {str(e)}', 'error')
+        return redirect(url_for('instagram_login_pro_page'))
+
+@app.route('/auth/instagram/callback')
+def auth_instagram_callback():
+    """Handle Instagram OAuth callback"""
+    try:
+        # Get the session ID from the callback (user will paste it)
+        session_id = request.args.get('session_id')
+        state = request.args.get('state')
+        
+        # Verify state parameter
+        from flask import session as flask_session
+        if state != flask_session.get('oauth_state'):
+            flash('Invalid authentication state. Please try again.', 'error')
+            return redirect(url_for('instagram_login_pro_page'))
+        
+        if session_id:
+            # Validate session ID format
+            if len(session_id) < 20:
+                flash('Invalid session ID format. Please try again.', 'error')
+                return redirect(url_for('instagram_login_pro_page'))
+            
+            # Update configuration with new session ID
+            Config.INSTAGRAM_SESSION_ID = session_id
+            Config.save_runtime_config()
+            
+            # Reset bot login status
+            global bot
+            if bot:
+                bot.logged_in = False
+                bot.last_login_check = None
+            
+            flash('✅ Instagram login successful! Session configured automatically.', 'success')
+            return redirect(url_for('dashboard'))
+        else:
+            flash('No session ID received. Please try again.', 'error')
+            return redirect(url_for('instagram_login_pro_page'))
+            
+    except Exception as e:
+        logging.error(f"OAuth callback error: {e}")
+        flash(f'OAuth callback failed: {str(e)}', 'error')
+        return redirect(url_for('instagram_login_pro_page'))
 
 @app.route('/update_instagram_login', methods=['POST'])
 def update_instagram_login():
-    """Update Instagram login credentials"""
+    """Update Instagram login credentials (manual method)"""
     try:
         # Update session ID
         session_id = request.form.get('session_id', '').strip()
@@ -577,123 +647,6 @@ def update_instagram_login():
         logging.error(f"Error updating Instagram login: {e}")
         flash(f"Error updating login: {e}", 'error')
         return redirect('/instagram_login')
-
-@app.route('/api/instagram-login', methods=['POST'])
-def api_instagram_login():
-    """Professional Instagram login API endpoint"""
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-        
-        username = data.get('username', '').strip()
-        password = data.get('password', '').strip()
-        
-        if not username or not password:
-            return jsonify({'error': 'Username and password are required'}), 400
-        
-        # Create a temporary Instagram client for login
-        from instagrapi import Client
-        from instagrapi.exceptions import LoginRequired, ChallengeRequired, PleaseWaitFewMinutes
-        
-        temp_client = Client()
-        
-        # Configure client like professional tools
-        temp_client.delay_range = [3, 7]  # Human-like delays
-        temp_client.request_timeout = 30
-        
-        # Add user agent that looks like a real mobile app
-        temp_client.set_user_agent("Instagram 219.0.0.12.117 Android (29/10; 300dpi; 720x1448; samsung; SM-A750FN; a7y18lte; samsungexynos7885; en_US; 336592868)")
-        
-        try:
-            logging.info(f"📱 Attempting professional login for @{username}...")
-            
-            # Add delay to avoid detection
-            import time
-            time.sleep(random.uniform(2, 5))
-            
-            # Try to login with username and password
-            logged_in = temp_client.login(username, password)
-            
-            if logged_in:
-                # Get session ID from successful login
-                session_data = temp_client.get_settings()
-                session_id = session_data.get('authorization_data', {}).get('sessionid')
-                
-                if not session_id:
-                    # Try alternative session extraction
-                    cookies = temp_client.cookie_jar
-                    for cookie in cookies:
-                        if cookie.name == 'sessionid':
-                            session_id = cookie.value
-                            break
-                
-                if session_id:
-                    # Update configuration with new session ID
-                    Config.INSTAGRAM_SESSION_ID = session_id
-                    Config.save_runtime_config()
-                    
-                    # Update bot's login status
-                    global bot
-                    if bot:
-                        bot.logged_in = False  # Force re-login with new session
-                        bot.last_login_check = None
-                    
-                    # Get user info for confirmation
-                    user_info = temp_client.account_info()
-                    
-                    logging.info(f"✅ Professional login successful for @{user_info.username}")
-                    return jsonify({
-                        'success': True,
-                        'message': f'Successfully logged in as @{user_info.username}! Session saved securely.',
-                        'username': user_info.username
-                    })
-                else:
-                    logging.error("❌ Failed to extract session ID from login")
-                    return jsonify({'error': 'Login succeeded but failed to extract session. Please try the manual method.'}), 500
-            else:
-                logging.error("❌ Login failed")
-                return jsonify({'error': 'Invalid username or password'}), 401
-                
-        except ChallengeRequired as e:
-            logging.error(f"❌ Instagram challenge required: {e}")
-            return jsonify({
-                'error': 'Instagram requires verification. Please:\n1. Login manually in your browser\n2. Complete any challenges/verifications\n3. Try again in a few minutes'
-            }), 400
-            
-        except PleaseWaitFewMinutes as e:
-            logging.error(f"❌ Instagram rate limit: {e}")
-            return jsonify({
-                'error': 'Instagram rate limit reached. Please wait 15-30 minutes before trying again.'
-            }), 429
-            
-        except Exception as e:
-            logging.error(f"❌ Login error: {e}")
-            error_msg = str(e).lower()
-            
-            if 'two_factor' in error_msg or '2fa' in error_msg:
-                return jsonify({
-                    'error': 'Two-factor authentication detected. Please temporarily disable 2FA or use the manual session ID method.'
-                }), 400
-            elif 'checkpoint' in error_msg or 'challenge' in error_msg:
-                return jsonify({
-                    'error': 'Instagram security checkpoint required. Please login manually in your browser first.'
-                }), 400
-            elif 'rate' in error_msg or 'limit' in error_msg:
-                return jsonify({
-                    'error': 'Too many login attempts. Please wait 30 minutes and try again.'
-                }), 429
-            else:
-                return jsonify({'error': f'Login failed: {str(e)}'}), 500
-                
-    except Exception as e:
-        logging.error(f"❌ API login error: {e}")
-        return jsonify({'error': 'Internal server error. Please try again.'}), 500
-
-@app.route('/instagram-login-pro')
-def instagram_login_pro_page():
-    """Professional Instagram login page"""
-    return render_template('instagram_login.html')
 
 if __name__ == '__main__':
     # Load runtime configuration on startup

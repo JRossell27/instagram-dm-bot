@@ -22,15 +22,15 @@
         
         .login-container {
             background: white;
-            padding: 2rem;
+            padding: 2.5rem;
             border-radius: 20px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             width: 100%;
-            max-width: 400px;
+            max-width: 450px;
+            text-align: center;
         }
         
         .instagram-logo {
-            text-align: center;
             margin-bottom: 2rem;
         }
         
@@ -38,124 +38,170 @@
             background: linear-gradient(45deg, #f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            font-size: 2rem;
+            font-size: 2.2rem;
             font-weight: bold;
-        }
-        
-        .form-group {
-            margin-bottom: 1rem;
-        }
-        
-        label {
-            display: block;
             margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .oauth-explanation {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            text-align: left;
+        }
+        
+        .oauth-explanation h3 {
             color: #333;
-            font-weight: 500;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
         }
         
-        input[type="text"], input[type="password"] {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
+        .oauth-explanation h3 i {
+            margin-right: 0.5rem;
+            color: #28a745;
+        }
+        
+        .step {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            background: white;
             border-radius: 10px;
-            font-size: 16px;
-            transition: border-color 0.3s;
+            border: 1px solid #e9ecef;
         }
         
-        input[type="text"]:focus, input[type="password"]:focus {
-            outline: none;
-            border-color: #667eea;
+        .step-number {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-right: 1rem;
+            flex-shrink: 0;
         }
         
-        .login-btn {
+        .step-content {
+            flex: 1;
+        }
+        
+        .step-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.25rem;
+        }
+        
+        .step-desc {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .oauth-btn {
             width: 100%;
-            padding: 12px;
+            padding: 15px 20px;
             background: linear-gradient(45deg, #f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%);
             color: white;
             border: none;
-            border-radius: 10px;
-            font-size: 16px;
+            border-radius: 15px;
+            font-size: 1.1rem;
             font-weight: bold;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: all 0.3s ease;
+            margin-bottom: 1.5rem;
+            text-decoration: none;
+            display: inline-block;
         }
         
-        .login-btn:hover {
+        .oauth-btn:hover {
             transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            color: white;
+            text-decoration: none;
         }
         
-        .login-btn:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-            transform: none;
+        .oauth-btn i {
+            margin-right: 10px;
+            font-size: 1.2rem;
         }
         
-        .status-message {
-            margin-top: 1rem;
-            padding: 10px;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: 500;
-        }
-        
-        .status-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .status-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .status-info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-        
-        .security-note {
-            margin-top: 1.5rem;
+        .security-badges {
+            display: flex;
+            justify-content: space-around;
+            margin: 1.5rem 0;
             padding: 1rem;
             background: #f8f9fa;
-            border-radius: 10px;
-            font-size: 14px;
-            color: #666;
+            border-radius: 15px;
         }
         
-        .security-note h4 {
-            color: #333;
+        .badge {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .badge-icon {
+            font-size: 1.5rem;
+            color: #28a745;
             margin-bottom: 0.5rem;
         }
         
-        .back-btn {
-            display: inline-block;
-            margin-top: 1rem;
-            color: #667eea;
-            text-decoration: none;
+        .badge-text {
+            font-size: 0.8rem;
+            color: #666;
             font-weight: 500;
         }
         
+        .back-btn {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+        
         .back-btn:hover {
+            color: #5a6fd8;
             text-decoration: underline;
         }
         
-        .loading-spinner {
-            display: none;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #ffffff;
-            border-top: 2px solid transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
+        .alternative-method {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e9ecef;
         }
         
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .alternative-method h4 {
+            color: #666;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+        
+        .alt-btn {
+            background: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: background 0.3s ease;
+        }
+        
+        .alt-btn:hover {
+            background: #5a6268;
+            color: white;
+            text-decoration: none;
         }
     </style>
 </head>
@@ -163,99 +209,77 @@
     <div class="login-container">
         <div class="instagram-logo">
             <h1>📸 Instagram Login</h1>
-            <p style="color: #666; margin-top: 0.5rem;">Connect your account securely</p>
+            <p class="subtitle">Connect your account securely via Instagram</p>
         </div>
         
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="username">Instagram Username</label>
-                <input type="text" id="username" name="username" placeholder="your_username" required>
+        <div class="oauth-explanation">
+            <h3><i class="fas fa-shield-alt"></i>How Professional Login Works</h3>
+            
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Redirect to Instagram</div>
+                    <div class="step-desc">You'll be taken to Instagram's official website</div>
+                </div>
             </div>
             
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="••••••••" required>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Login on Instagram</div>
+                    <div class="step-desc">Use your normal Instagram login (2FA supported)</div>
+                </div>
             </div>
             
-            <button type="submit" class="login-btn" id="loginBtn">
-                <span class="loading-spinner" id="loadingSpinner"></span>
-                <span id="btnText">🔐 Login Securely</span>
-            </button>
-        </form>
-        
-        <div id="statusMessage" class="status-message" style="display: none;"></div>
-        
-        <div class="security-note">
-            <h4>🔒 Security & Privacy</h4>
-            <ul style="margin-left: 1rem; margin-top: 0.5rem;">
-                <li>✅ Your credentials are encrypted</li>
-                <li>✅ No passwords stored permanently</li>
-                <li>✅ Professional-grade authentication</li>
-                <li>✅ Same security as Sprout Social/HootSuite</li>
-            </ul>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-title">Authorize Access</div>
+                    <div class="step-desc">Instagram will ask you to approve our app</div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <div class="step-title">Automatic Setup</div>
+                    <div class="step-desc">We'll configure everything automatically</div>
+                </div>
+            </div>
         </div>
         
-        <a href="/" class="back-btn">← Back to Dashboard</a>
+        <a href="/auth/instagram" class="oauth-btn">
+            <i class="fab fa-instagram"></i>
+            Login with Instagram Official
+        </a>
+        
+        <div class="security-badges">
+            <div class="badge">
+                <div class="badge-icon">🔒</div>
+                <div class="badge-text">Secure OAuth</div>
+            </div>
+            <div class="badge">
+                <div class="badge-icon">✅</div>
+                <div class="badge-text">2FA Supported</div>
+            </div>
+            <div class="badge">
+                <div class="badge-icon">🛡️</div>
+                <div class="badge-text">No Passwords Stored</div>
+            </div>
+        </div>
+        
+        <div class="alternative-method">
+            <h4>Having trouble? Try the manual method:</h4>
+            <a href="/instagram_login" class="alt-btn">
+                <i class="fas fa-cog"></i> Manual Session ID Setup
+            </a>
+        </div>
+        
+        <div style="margin-top: 1.5rem;">
+            <a href="/" class="back-btn">← Back to Dashboard</a>
+        </div>
     </div>
     
-    <script>
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const loginBtn = document.getElementById('loginBtn');
-            const btnText = document.getElementById('btnText');
-            const loadingSpinner = document.getElementById('loadingSpinner');
-            const statusMessage = document.getElementById('statusMessage');
-            
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            
-            // Show loading state
-            loginBtn.disabled = true;
-            loadingSpinner.style.display = 'inline-block';
-            btnText.textContent = 'Logging in...';
-            statusMessage.style.display = 'none';
-            
-            try {
-                const response = await fetch('/api/instagram-login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ username, password })
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    // Success
-                    statusMessage.className = 'status-message status-success';
-                    statusMessage.textContent = '✅ ' + result.message;
-                    statusMessage.style.display = 'block';
-                    
-                    // Redirect to dashboard after 2 seconds
-                    setTimeout(() => {
-                        window.location.href = '/';
-                    }, 2000);
-                    
-                } else {
-                    // Error
-                    statusMessage.className = 'status-message status-error';
-                    statusMessage.textContent = '❌ ' + result.error;
-                    statusMessage.style.display = 'block';
-                }
-                
-            } catch (error) {
-                statusMessage.className = 'status-message status-error';
-                statusMessage.textContent = '❌ Connection error. Please try again.';
-                statusMessage.style.display = 'block';
-            }
-            
-            // Reset button state
-            loginBtn.disabled = false;
-            loadingSpinner.style.display = 'none';
-            btnText.textContent = '🔐 Login Securely';
-        });
-    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
 </body>
 </html> 
