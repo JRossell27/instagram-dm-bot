@@ -22,6 +22,8 @@ class InstagramBot:
         self.client = Client()
         self.db = Database()
         self.logged_in = False
+        self.username = Config.INSTAGRAM_USERNAME
+        self.password = Config.INSTAGRAM_PASSWORD
         
     def login(self):
         """Login to Instagram with 2FA support"""
