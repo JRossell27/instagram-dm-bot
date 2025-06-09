@@ -12,7 +12,7 @@
   "ONLY_POSTS_WITH_LINKS": false,
   "DM_MESSAGE": "Hi! Thanks for your interest! \n\nHere's the link you requested: {link}\n\nLet me know if you have any questions!",
   "DEFAULT_LINK": "https://your-website.com",
-  "CHECK_INTERVAL": 30,
-  "MAX_POSTS_TO_CHECK": 5,
+  "CHECK_INTERVAL": 90,
+  "MAX_POSTS_TO_CHECK": 3,
   "INSTAGRAM_SESSION_ID": null
 }
