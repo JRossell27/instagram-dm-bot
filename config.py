@@ -5,28 +5,60 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    # Instagram credentials
+    # Instagram Business API credentials (OAuth method)
+    INSTAGRAM_APP_ID = os.getenv('INSTAGRAM_APP_ID')
+    INSTAGRAM_APP_SECRET = os.getenv('INSTAGRAM_APP_SECRET')
+    INSTAGRAM_ACCESS_TOKEN = None  # Set via OAuth
+    INSTAGRAM_USER_ID = None  # Set via OAuth
+    OAUTH_STATE_SECRET = os.getenv('OAUTH_STATE_SECRET', 'your-secure-state-secret')
+    
+    # Legacy credentials (for backward compatibility)
     INSTAGRAM_USERNAME = os.getenv('INSTAGRAM_USERNAME')
     INSTAGRAM_PASSWORD = os.getenv('INSTAGRAM_PASSWORD')
     INSTAGRAM_SESSION_ID = None  # Will be managed through web interface
     
-    # Keywords to monitor (can be modified)
-    KEYWORDS = [
+    # WEBHOOK CONFIGURATION (ManyChat Strategy)
+    # ========================================
+    WEBHOOK_BASE_URL = os.getenv('WEBHOOK_BASE_URL', 'https://your-app.onrender.com')
+    WEBHOOK_VERIFY_TOKEN = os.getenv('WEBHOOK_VERIFY_TOKEN', 'your-webhook-verify-token')
+    
+    # KEYWORD STRATEGY (ManyChat Approach)
+    # ===================================
+    
+    # Consent keywords - trigger DIRECT DM sending
+    CONSENT_KEYWORDS = [
+        'dm me',
+        'send me',
+        'message me',
+        'dm please',
+        'send link',
+        'private message',
+        'inbox me'
+    ]
+    
+    # Interest keywords - trigger public reply encouraging DM
+    INTEREST_KEYWORDS = [
         'interested',
         'info',
         'details', 
         'link',
-        'dm me',
-        'send me',
         'how',
         'tell me more',
-        'want to know'
+        'want to know',
+        'more info'
     ]
     
-    # DM message template for encouragement replies
-    DM_MESSAGE = """Thanks for reaching out! Here's what you requested: {link}
+    # All keywords combined (for backward compatibility)
+    KEYWORDS = CONSENT_KEYWORDS + INTEREST_KEYWORDS
+    
+    # DIRECT DM CONFIGURATION
+    # =======================
+    ENABLE_DIRECT_DM = True  # Enable ManyChat-style direct DM sending
+    
+    # DM message template for direct messages
+    DM_MESSAGE = """Hi! I saw your comment and here's what you requested: {link}
 
-Feel free to ask if you have any questions! 🙂"""
+Let me know if you have any questions! 🙂"""
     
     # Default link to send (can be customized)
     DEFAULT_LINK = "https://your-website.com"
@@ -34,97 +66,18 @@ Feel free to ask if you have any questions! 🙂"""
     # Database file
     DATABASE_FILE = "instagram_bot.db"
     
-    # Check interval in seconds
-    CHECK_INTERVAL = 30
+    # REMOVED: Polling-related settings (no longer needed with webhooks)
+    # CHECK_INTERVAL, MAX_POSTS_TO_CHECK, MONITOR_ALL_POSTS, etc.
     
-    # Maximum posts to check per run
-    MAX_POSTS_TO_CHECK = 5
+    # FOLLOWER REQUIREMENTS
+    # ====================
+    MIN_FOLLOWER_COUNT = 0  # Minimum followers to respond to
+    ONLY_VERIFIED_ACCOUNTS = False  # Only respond to verified accounts
     
-    # POST FILTERING OPTIONS
-    # ===================
-    
-    # Option 1: Monitor ALL posts (set to True to monitor all posts)
-    MONITOR_ALL_POSTS = False
-    
-    # Option 2: Specific post IDs to monitor (get these from Instagram URLs)
-    # Example: from URL https://www.instagram.com/p/ABC123DEF/ use "ABC123DEF"
-    SPECIFIC_POST_IDS = [
-        # "ABC123DEF",  # Replace with your actual post IDs
-        # "XYZ789GHI",
-    ]
-    
-    # Option 3: Only monitor posts with specific hashtags in caption
-    REQUIRED_HASHTAGS = [
-        # "#dmbot",      # Only monitor posts with this hashtag
-        # "#automate",   # Add multiple hashtags as needed
-    ]
-    
-    # Option 4: Only monitor posts with specific words in caption
-    REQUIRED_CAPTION_WORDS = [
-        # "link in bio",     # Only monitor posts mentioning this
-        # "dm for details",  # Add phrases to look for
-    ]
-    
-    # Option 5: Only monitor posts newer than X days
-    MAX_POST_AGE_DAYS = 7  # Set to None to disable age filtering
-    
-    # Option 6: Only monitor posts that contain links in bio/caption
-    ONLY_POSTS_WITH_LINKS = False
-
-    # Runtime configuration file
-    RUNTIME_CONFIG_FILE = "runtime_config.json"
-    
-    # Instagram Business API OAuth Configuration (NEW)
-    INSTAGRAM_APP_ID = os.getenv('INSTAGRAM_APP_ID', '')
-    INSTAGRAM_APP_SECRET = os.getenv('INSTAGRAM_APP_SECRET', '')
-    INSTAGRAM_ACCESS_TOKEN = os.getenv('INSTAGRAM_ACCESS_TOKEN', '')
-    INSTAGRAM_USER_ID = os.getenv('INSTAGRAM_USER_ID', '')
-    
-    # OAuth state for security
-    OAUTH_STATE_SECRET = os.getenv('OAUTH_STATE_SECRET', '')
-    
-    # NEW: ManyChat-style Direct DM Configuration
-    ENABLE_DIRECT_DM = True  # Enable direct DM sending (like ManyChat)
-    
-    # Webhook configuration for real-time notifications
-    WEBHOOK_BASE_URL = os.getenv('WEBHOOK_BASE_URL', 'https://instagram-dm-bot-tk4d.onrender.com')
-    WEBHOOK_VERIFY_TOKEN = os.getenv('WEBHOOK_VERIFY_TOKEN', 'your_verify_token_here')
-    
-    # Enhanced keywords for direct DM (more specific triggers)
-    DIRECT_DM_KEYWORDS = [
-        'link',
-        'dm me',
-        'send me', 
-        'info',
-        'details',
-        'interested',
-        'want to know',
-        'tell me more',
-        'how much',
-        'price',
-        'cost',
-        'buy',
-        'purchase',
-        'get started',
-        'sign up',
-        'join',
-        'access'
-    ]
-    
-    # Consent-based keywords (explicit permission to DM)
-    CONSENT_KEYWORDS = [
-        'dm me',
-        'send me',
-        'message me',
-        'dm',
-        'send info',
-        'send link',
-        'send details'
-    ]
-    
-    # User eligibility for direct DM (follower requirements)
-    REQUIRE_FOLLOWER_FOR_DM = False  # Set to True to only DM followers
-    MIN_FOLLOWER_COUNT_FOR_DM = 0    # Minimum follower count to send DM
+    # DM RATE LIMITING
+    # ===============
+    MAX_DMS_PER_HOUR = 30  # Instagram rate limit compliance
+    MAX_DMS_PER_DAY = 200  # Conservative daily limit
     
     @classmethod
     def load_runtime_config(cls):
@@ -139,9 +92,10 @@ Feel free to ask if you have any questions! 🙂"""
                     if hasattr(cls, key):
                         setattr(cls, key, value)
                 
-                cls.CHECK_INTERVAL = config_data.get('CHECK_INTERVAL', cls.CHECK_INTERVAL)
-                cls.MAX_POSTS_TO_CHECK = config_data.get('MAX_POSTS_TO_CHECK', cls.MAX_POSTS_TO_CHECK)
-                cls.INSTAGRAM_SESSION_ID = config_data.get('INSTAGRAM_SESSION_ID', cls.INSTAGRAM_SESSION_ID)
+                # Load webhook-specific settings
+                cls.WEBHOOK_BASE_URL = config_data.get('WEBHOOK_BASE_URL', cls.WEBHOOK_BASE_URL)
+                cls.WEBHOOK_VERIFY_TOKEN = config_data.get('WEBHOOK_VERIFY_TOKEN', cls.WEBHOOK_VERIFY_TOKEN)
+                cls.ENABLE_DIRECT_DM = config_data.get('ENABLE_DIRECT_DM', cls.ENABLE_DIRECT_DM)
                 
                 # Load Instagram Business API OAuth settings
                 cls.INSTAGRAM_APP_ID = config_data.get('INSTAGRAM_APP_ID', cls.INSTAGRAM_APP_ID)
@@ -149,6 +103,14 @@ Feel free to ask if you have any questions! 🙂"""
                 cls.INSTAGRAM_ACCESS_TOKEN = config_data.get('INSTAGRAM_ACCESS_TOKEN', cls.INSTAGRAM_ACCESS_TOKEN)
                 cls.INSTAGRAM_USER_ID = config_data.get('INSTAGRAM_USER_ID', cls.INSTAGRAM_USER_ID)
                 cls.OAUTH_STATE_SECRET = config_data.get('OAUTH_STATE_SECRET', cls.OAUTH_STATE_SECRET)
+                
+                # Load legacy settings for backward compatibility
+                cls.INSTAGRAM_SESSION_ID = config_data.get('INSTAGRAM_SESSION_ID', cls.INSTAGRAM_SESSION_ID)
+                
+                # Update keywords
+                cls.CONSENT_KEYWORDS = config_data.get('CONSENT_KEYWORDS', cls.CONSENT_KEYWORDS)
+                cls.INTEREST_KEYWORDS = config_data.get('INTEREST_KEYWORDS', cls.INTEREST_KEYWORDS)
+                cls.KEYWORDS = config_data.get('KEYWORDS', cls.CONSENT_KEYWORDS + cls.INTEREST_KEYWORDS)
                 
                 print("✅ Runtime configuration loaded successfully")
                 return True
@@ -159,42 +121,47 @@ Feel free to ask if you have any questions! 🙂"""
         except Exception as e:
             print(f"❌ Error loading runtime configuration: {e}")
             return False
-
+    
     @classmethod
     def save_runtime_config(cls):
         """Save current configuration to runtime_config.json"""
         try:
             config_data = {
+                # Keywords
                 'KEYWORDS': cls.KEYWORDS,
-                'MONITOR_ALL_POSTS': cls.MONITOR_ALL_POSTS,
-                'SPECIFIC_POST_IDS': cls.SPECIFIC_POST_IDS,
-                'REQUIRED_HASHTAGS': cls.REQUIRED_HASHTAGS,
-                'REQUIRED_CAPTION_WORDS': cls.REQUIRED_CAPTION_WORDS,
-                'MAX_POST_AGE_DAYS': cls.MAX_POST_AGE_DAYS,
-                'ONLY_POSTS_WITH_LINKS': cls.ONLY_POSTS_WITH_LINKS,
+                'CONSENT_KEYWORDS': cls.CONSENT_KEYWORDS,
+                'INTEREST_KEYWORDS': cls.INTEREST_KEYWORDS,
+                
+                # DM Settings
                 'DM_MESSAGE': cls.DM_MESSAGE,
                 'DEFAULT_LINK': cls.DEFAULT_LINK,
-                'CHECK_INTERVAL': cls.CHECK_INTERVAL,
-                'MAX_POSTS_TO_CHECK': cls.MAX_POSTS_TO_CHECK,
-                'INSTAGRAM_SESSION_ID': cls.INSTAGRAM_SESSION_ID,
+                'ENABLE_DIRECT_DM': cls.ENABLE_DIRECT_DM,
+                
+                # Webhook Settings
+                'WEBHOOK_BASE_URL': cls.WEBHOOK_BASE_URL,
+                'WEBHOOK_VERIFY_TOKEN': cls.WEBHOOK_VERIFY_TOKEN,
+                
+                # Instagram Business API OAuth
                 'INSTAGRAM_APP_ID': cls.INSTAGRAM_APP_ID,
                 'INSTAGRAM_APP_SECRET': cls.INSTAGRAM_APP_SECRET,
                 'INSTAGRAM_ACCESS_TOKEN': cls.INSTAGRAM_ACCESS_TOKEN,
                 'INSTAGRAM_USER_ID': cls.INSTAGRAM_USER_ID,
                 'OAUTH_STATE_SECRET': cls.OAUTH_STATE_SECRET,
-                'ENABLE_DIRECT_DM': cls.ENABLE_DIRECT_DM,
-                'WEBHOOK_BASE_URL': cls.WEBHOOK_BASE_URL,
-                'WEBHOOK_VERIFY_TOKEN': cls.WEBHOOK_VERIFY_TOKEN,
-                'DIRECT_DM_KEYWORDS': cls.DIRECT_DM_KEYWORDS,
-                'CONSENT_KEYWORDS': cls.CONSENT_KEYWORDS,
-                'REQUIRE_FOLLOWER_FOR_DM': cls.REQUIRE_FOLLOWER_FOR_DM,
-                'MIN_FOLLOWER_COUNT_FOR_DM': cls.MIN_FOLLOWER_COUNT_FOR_DM
+                
+                # Legacy (for backward compatibility)
+                'INSTAGRAM_SESSION_ID': cls.INSTAGRAM_SESSION_ID,
+                
+                # Rate Limiting
+                'MAX_DMS_PER_HOUR': cls.MAX_DMS_PER_HOUR,
+                'MAX_DMS_PER_DAY': cls.MAX_DMS_PER_DAY,
+                'MIN_FOLLOWER_COUNT': cls.MIN_FOLLOWER_COUNT,
+                'ONLY_VERIFIED_ACCOUNTS': cls.ONLY_VERIFIED_ACCOUNTS
             }
             
             with open('runtime_config.json', 'w') as f:
                 json.dump(config_data, f, indent=2)
-                
-            print("✅ Runtime configuration saved successfully")
+            
+            print("✅ Runtime configuration saved")
             return True
             
         except Exception as e:

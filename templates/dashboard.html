@@ -4,22 +4,22 @@
 
 {% block header_buttons %}
 <div class="btn-group" role="group">
-    {% if bot_status.running %}
-        <form method="POST" action="{{ url_for('stop_bot') }}" class="d-inline">
-            <button type="submit" class="btn btn-danger">
-                <i class="fas fa-stop me-1"></i>Stop Bot
+    {% if bot_status.webhook_active %}
+        <form method="POST" action="{{ url_for('deactivate_bot') }}" class="d-inline">
+            <button type="submit" class="btn btn-warning">
+                <i class="fas fa-pause me-1"></i>Deactivate Webhooks
             </button>
         </form>
     {% else %}
-        <form method="POST" action="{{ url_for('start_bot') }}" class="d-inline">
+        <form method="POST" action="{{ url_for('activate_bot') }}" class="d-inline">
             <button type="submit" class="btn btn-success">
-                <i class="fas fa-play me-1"></i>Start Bot
+                <i class="fas fa-bolt me-1"></i>Activate Webhooks
             </button>
         </form>
     {% endif %}
-    <form method="POST" action="{{ url_for('run_once') }}" class="d-inline">
+    <form method="POST" action="{{ url_for('test_webhook_processing') }}" class="d-inline">
         <button type="submit" class="btn btn-outline-primary">
-            <i class="fas fa-play-circle me-1"></i>Test Run
+            <i class="fas fa-vial me-1"></i>Test Webhook
         </button>
     </form>
 </div>
@@ -63,7 +63,7 @@
                     </div>
                     <div class="text-end">
                         <span class="badge bg-success fs-6">
-                            <i class="fas fa-bolt me-1"></i>ManyChat Ready
+                            <i class="fas fa-bolt me-1"></i>Webhook Ready
                         </span>
                         <div class="text-muted small mt-1">
                             User ID: {{ account_info.user_id }}
@@ -87,7 +87,7 @@
                         <h5 class="mb-1 text-warning">
                             <i class="fas fa-exclamation-triangle me-2"></i>Instagram Not Connected
                         </h5>
-                        <p class="mb-0">Please connect your Instagram Business account to enable ManyChat-style automation.</p>
+                        <p class="mb-0">Please connect your Instagram Business account to enable real-time webhook automation.</p>
                     </div>
                     <div>
                         <a href="{{ url_for('instagram_login_pro_page') }}" class="btn btn-warning">
@@ -104,16 +104,16 @@
 <!-- Status Cards -->
 <div class="row mb-4">
     <div class="col-md-3">
-        <div class="card status-card {% if bot_status.running %}status-running{% else %}status-offline{% endif %}">
+        <div class="card status-card {% if bot_status.webhook_active %}status-running{% else %}status-offline{% endif %}">
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
-                        <h6 class="card-title mb-0">Bot Status</h6>
-                        <h4 class="mb-0 {% if bot_status.running %}text-success{% else %}text-danger{% endif %}">
-                            {% if bot_status.running %}Running{% else %}Stopped{% endif %}
+                        <h6 class="card-title mb-0">Webhook Status</h6>
+                        <h4 class="mb-0 {% if bot_status.webhook_active %}text-success{% else %}text-warning{% endif %}">
+                            {% if bot_status.webhook_active %}Active{% else %}Inactive{% endif %}
                         </h4>
                     </div>
-                    <i class="fas fa-robot fa-2x {% if bot_status.running %}text-success{% else %}text-muted{% endif %}"></i>
+                    <i class="fas fa-bolt fa-2x {% if bot_status.webhook_active %}text-success{% else %}text-muted{% endif %}"></i>
                 </div>
             </div>
         </div>
@@ -124,7 +124,7 @@
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
-                        <h6 class="card-title mb-0">Total Processed</h6>
+                        <h6 class="card-title mb-0">Comments Processed</h6>
                         <h4 class="mb-0 text-primary">{{ stats.total_processed or 0 }}</h4>
                     </div>
                     <i class="fas fa-comments fa-2x text-primary"></i>
@@ -138,10 +138,10 @@
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
-                        <h6 class="card-title mb-0">Keywords</h6>
-                        <h4 class="mb-0 text-info">{{ stats.keywords|length }}</h4>
+                        <h6 class="card-title mb-0">DMs Sent</h6>
+                        <h4 class="mb-0 text-success">{{ bot_status.total_dms_sent or 0 }}</h4>
                     </div>
-                    <i class="fas fa-tags fa-2x text-info"></i>
+                    <i class="fas fa-paper-plane fa-2x text-success"></i>
                 </div>
             </div>
         </div>
@@ -152,10 +152,10 @@
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
-                        <h6 class="card-title mb-0">Check Interval</h6>
-                        <h4 class="mb-0 text-warning">{{ stats.check_interval }}s</h4>
+                        <h6 class="card-title mb-0">Webhooks Received</h6>
+                        <h4 class="mb-0 text-info">{{ bot_status.total_webhooks_processed or 0 }}</h4>
                     </div>
-                    <i class="fas fa-clock fa-2x text-warning"></i>
+                    <i class="fas fa-satellite-dish fa-2x text-info"></i>
                 </div>
             </div>
         </div>
@@ -168,52 +168,42 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
-                    <i class="fas fa-cog me-2"></i>Configuration Overview
+                    <i class="fas fa-cog me-2"></i>Webhook Configuration
                 </h5>
                 <div class="btn-group" role="group">
                     <a href="/manage_keywords" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-tags me-1"></i>Keywords & Settings
+                        <i class="fas fa-tags me-1"></i>Manage Keywords
                     </a>
-                    <a href="/manage_posts" class="btn btn-sm btn-outline-info">
-                        <i class="fas fa-list-check me-1"></i>Manage Posts
+                    <a href="/webhook-test" class="btn btn-sm btn-outline-info">
+                        <i class="fas fa-vial me-1"></i>Test Webhooks
                     </a>
                     <a href="{{ url_for('config_page') }}" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-cog me-1"></i>Full Configuration
+                        <i class="fas fa-cog me-1"></i>Advanced Config
                     </a>
                 </div>
             </div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <h6 class="text-muted mb-2">Monitored Keywords</h6>
+                        <h6 class="text-success mb-2">
+                            <i class="fas fa-check me-1"></i>Consent Keywords (Direct DM)
+                        </h6>
                         <div class="mb-3">
-                            {% for keyword in stats.keywords %}
-                                <span class="badge bg-primary me-1 mb-1">{{ keyword }}</span>
+                            {% for keyword in stats.consent_keywords %}
+                                <span class="badge bg-success me-1 mb-1">{{ keyword }}</span>
                             {% endfor %}
                         </div>
                         
-                        <h6 class="text-muted mb-2">Post Filtering</h6>
-                        {% if stats.monitor_all_posts %}
-                            <span class="badge bg-success">Monitoring ALL posts</span>
-                        {% else %}
-                            {% if stats.specific_posts > 0 %}
-                                <span class="badge bg-info">{{ stats.specific_posts }} specific posts</span>
-                            {% endif %}
-                            {% if stats.required_hashtags %}
-                                <span class="badge bg-secondary">Hashtag filtering</span>
-                            {% endif %}
-                            {% if stats.required_phrases %}
-                                <span class="badge bg-secondary">Phrase filtering</span>
-                            {% endif %}
-                            {% if stats.max_age_days %}
-                                <span class="badge bg-secondary">{{ stats.max_age_days }} day limit</span>
-                            {% endif %}
-                            {% if not stats.specific_posts and not stats.required_hashtags and not stats.required_phrases %}
-                                <span class="badge bg-warning">No filters configured</span>
-                            {% endif %}
-                        {% endif %}
+                        <h6 class="text-info mb-2">
+                            <i class="fas fa-reply me-1"></i>Interest Keywords (Public Reply)
+                        </h6>
+                        <div class="mb-3">
+                            {% for keyword in stats.interest_keywords %}
+                                <span class="badge bg-info me-1 mb-1">{{ keyword }}</span>
+                            {% endfor %}
+                        </div>
                         
-                        <h6 class="text-muted mb-2 mt-3">DM Message Preview</h6>
+                        <h6 class="text-muted mb-2">DM Message Preview</h6>
                         <div class="small bg-light p-2 rounded">
                             {% if stats.dm_message %}
                                 "{{ stats.dm_message[:100] }}{% if stats.dm_message|length > 100 %}...{% endif %}"
@@ -230,15 +220,24 @@
                     </div>
                     
                     <div class="col-md-6">
-                        {% if bot_status.last_run %}
-                        <h6 class="text-muted mb-2">Last Run</h6>
-                        <p class="mb-3">{{ bot_status.last_run.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                        {% if bot_status.last_webhook_received %}
+                        <h6 class="text-muted mb-2">Last Webhook</h6>
+                        <p class="mb-3">{{ bot_status.last_webhook_received.strftime('%Y-%m-%d %H:%M:%S') }}</p>
                         {% endif %}
                         
-                        {% if bot_status.next_run %}
-                        <h6 class="text-muted mb-2">Next Run</h6>
-                        <p class="mb-3">{{ bot_status.next_run.strftime('%Y-%m-%d %H:%M:%S') }}</p>
-                        {% endif %}
+                        <h6 class="text-muted mb-2">Capabilities</h6>
+                        <ul class="list-unstyled">
+                            {% for capability, enabled in bot_status.capabilities.items() %}
+                                <li class="mb-1">
+                                    {% if enabled %}
+                                        <i class="fas fa-check text-success me-2"></i>
+                                    {% else %}
+                                        <i class="fas fa-times text-danger me-2"></i>
+                                    {% endif %}
+                                    {{ capability.replace('_', ' ').title() }}
+                                </li>
+                            {% endfor %}
+                        </ul>
                         
                         {% if bot_status.error_message %}
                         <h6 class="text-muted mb-2">Error</h6>
@@ -256,28 +255,126 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">
-                    <i class="fas fa-chart-line me-2"></i>Quick Stats
+                    <i class="fas fa-tachometer-alt me-2"></i>Real-Time Stats
                 </h5>
             </div>
             <div class="card-body">
                 <div class="d-flex justify-content-between mb-2">
-                    <span>Status:</span>
-                    <span class="{% if bot_status.running %}text-success{% else %}text-danger{% endif %}">
-                        {% if bot_status.running %}Active{% else %}Inactive{% endif %}
+                    <span>Webhook Status:</span>
+                    <span class="{% if bot_status.webhook_active %}text-success{% else %}text-warning{% endif %}">
+                        {% if bot_status.webhook_active %}Active{% else %}Inactive{% endif %}
                     </span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
-                    <span>Keywords:</span>
-                    <span>{{ stats.keywords|length }}</span>
+                    <span>Authenticated:</span>
+                    <span class="{% if bot_status.authenticated %}text-success{% else %}text-danger{% endif %}">
+                        {% if bot_status.authenticated %}Yes{% else %}No{% endif %}
+                    </span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
-                    <span>Total Processed:</span>
+                    <span>Comments Processed:</span>
                     <span>{{ stats.total_processed or 0 }}</span>
                 </div>
-                <div class="d-flex justify-content-between">
-                    <span>Check Interval:</span>
-                    <span>{{ stats.check_interval }} sec</span>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>DMs Sent:</span>
+                    <span class="text-success">{{ bot_status.total_dms_sent or 0 }}</span>
                 </div>
+                <div class="d-flex justify-content-between">
+                    <span>Webhooks Received:</span>
+                    <span class="text-info">{{ bot_status.total_webhooks_processed or 0 }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ManyChat Strategy Status -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-{% if bot_status.webhook_active and bot_status.authenticated %}success{% else %}warning{% endif %}">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-rocket me-2"></i>ManyChat Strategy Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center p-3">
+                            <div class="mb-2">
+                                <i class="fas fa-bolt fa-3x {% if stats.real_time_processing %}text-success{% else %}text-muted{% endif %}"></i>
+                            </div>
+                            <h6>Real-time Processing</h6>
+                            <span class="badge {% if stats.real_time_processing %}bg-success{% else %}bg-secondary{% endif %}">
+                                {% if stats.real_time_processing %}ACTIVE{% else %}INACTIVE{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="text-center p-3">
+                            <div class="mb-2">
+                                <i class="fas fa-paper-plane fa-3x {% if bot_status.capabilities.direct_dm_sending %}text-success{% else %}text-muted{% endif %}"></i>
+                            </div>
+                            <h6>Direct DM Sending</h6>
+                            <span class="badge {% if bot_status.capabilities.direct_dm_sending %}bg-success{% else %}bg-secondary{% endif %}">
+                                {% if bot_status.capabilities.direct_dm_sending %}ENABLED{% else %}DISABLED{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="text-center p-3">
+                            <div class="mb-2">
+                                <i class="fas fa-user-check fa-3x {% if bot_status.capabilities.consent_detection %}text-success{% else %}text-muted{% endif %}"></i>
+                            </div>
+                            <h6>Consent Detection</h6>
+                            <span class="badge {% if bot_status.capabilities.consent_detection %}bg-success{% else %}bg-secondary{% endif %}">
+                                {% if bot_status.capabilities.consent_detection %}ACTIVE{% else %}INACTIVE{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="text-center p-3">
+                            <div class="mb-2">
+                                <i class="fas fa-satellite-dish fa-3x {% if stats.webhook_enabled %}text-success{% else %}text-muted{% endif %}"></i>
+                            </div>
+                            <h6>Webhook Integration</h6>
+                            <span class="badge {% if stats.webhook_enabled %}bg-success{% else %}bg-secondary{% endif %}">
+                                {% if stats.webhook_enabled %}CONNECTED{% else %}DISCONNECTED{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if bot_status.webhook_active and bot_status.authenticated %}
+                <div class="alert alert-success mt-3 mb-0" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-check-circle fa-2x me-3"></i>
+                        <div>
+                            <h6 class="alert-heading mb-1">🚀 ManyChat Strategy ACTIVE!</h6>
+                            <p class="mb-0">Your bot is now processing comments in real-time with sub-second response times. Comments with consent keywords will trigger direct DMs automatically.</p>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-warning mt-3 mb-0" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                        <div>
+                            <h6 class="alert-heading mb-1">⚠️ Setup Required</h6>
+                            <p class="mb-0">
+                                {% if not bot_status.authenticated %}
+                                Connect your Instagram Business account first, then activate webhooks.
+                                {% else %}
+                                Activate webhook processing to enable real-time comment monitoring.
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -289,7 +386,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
-                    <i class="fas fa-history me-2"></i>Recent Activity
+                    <i class="fas fa-history me-2"></i>Recent Webhook Activity
                 </h5>
                 <a href="{{ url_for('logs_page') }}" class="btn btn-sm btn-outline-secondary">
                     View All Logs
@@ -303,6 +400,11 @@
                             <div>
                                 <strong>@{{ activity[0] }}</strong> commented with keyword 
                                 <span class="badge bg-primary">{{ activity[1] }}</span>
+                                {% if 'dm_sent' in activity[6] %}
+                                    <span class="badge bg-success ms-1">
+                                        <i class="fas fa-paper-plane me-1"></i>DM Sent
+                                    </span>
+                                {% endif %}
                             </div>
                             <small class="text-muted">{{ activity[2] }}</small>
                         </div>
@@ -310,82 +412,25 @@
                     {% endfor %}
                 {% else %}
                     <div class="text-center text-muted py-4">
-                        <i class="fas fa-inbox fa-3x mb-3"></i>
-                        <p>No recent activity</p>
-                        <p class="small">Comments matching your keywords will appear here</p>
+                        <i class="fas fa-satellite-dish fa-3x mb-3"></i>
+                        <p>No webhook activity yet</p>
+                        <p class="small">Real-time comment notifications will appear here when users comment with your keywords</p>
+                        <a href="/webhook-test" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-vial me-1"></i>Test Webhook Processing
+                        </a>
                     </div>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
-
-<div class="row mb-4">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">🤖 Bot Status</h5>
-                {% if bot_status.running %}
-                    <span class="badge bg-success">Running</span>
-                {% else %}
-                    <span class="badge bg-danger">Stopped</span>
-                {% endif %}
-                <p class="card-text mt-2">
-                    <small class="text-muted">
-                        {% if bot_status.last_run %}
-                            Last run: {{ bot_status.last_run }}
-                        {% else %}
-                            Never run
-                        {% endif %}
-                    </small>
-                </p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">📊 Statistics</h5>
-                <p class="card-text">
-                    <strong>{{ bot_status.total_dms_sent }}</strong> DMs sent<br>
-                    <strong>{{ bot_status.posts_monitored }}</strong> posts monitored
-                </p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">⚡ ManyChat Strategy</h5>
-                <div class="badge bg-success mb-2">ACTIVE</div>
-                <p class="card-text small">
-                    <strong>Real-time DMs:</strong> ✅ Enabled<br>
-                    <strong>Consent Detection:</strong> ✅ Active<br>
-                    <strong>Webhook Ready:</strong> ✅ Yes
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ManyChat Strategy Info -->
-<div class="alert alert-info" role="alert">
-    <h4 class="alert-heading">🚀 ManyChat Strategy Activated!</h4>
-    <p>Your bot now uses <strong>ManyChat's proven strategy</strong>:</p>
-    <ul class="mb-0">
-        <li><strong>Real-time webhooks</strong> - Instant notifications when comments are posted</li>
-        <li><strong>Direct DM sending</strong> - Automatically DM users who comment with consent keywords</li>
-        <li><strong>Consent detection</strong> - Only sends DMs when users explicitly request them</li>
-        <li><strong>Compliance focused</strong> - Follows Instagram's messaging policies</li>
-    </ul>
-</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Auto-refresh dashboard every 60 seconds
+    // Auto-refresh dashboard every 30 seconds for real-time updates
     setInterval(function() {
         location.reload();
-    }, 60000);
+    }, 30000);
 </script>
 {% endblock %} 
