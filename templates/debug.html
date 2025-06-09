@@ -129,7 +129,7 @@
                                     {% endif %}
                                     
                                     {% if debug.post_issues %}
-                                        <h6 class="text-info">Post Monitoring Issues:</h6>
+                                        <h6 class="text-info">Post Configuration Issues:</h6>
                                         <ul class="list-unstyled">
                                             {% for issue in debug.post_issues %}
                                             <li class="mb-2">
@@ -137,8 +137,8 @@
                                             </li>
                                             {% endfor %}
                                         </ul>
-                                        <a href="{{ url_for('posts_page') }}" class="btn btn-info btn-sm">
-                                            <i class="fas fa-images me-1"></i>Fix Posts
+                                        <a href="{{ url_for('config_page') }}" class="btn btn-info btn-sm">
+                                            <i class="fas fa-cog me-1"></i>Fix Posts
                                         </a>
                                     {% endif %}
                                     
@@ -272,324 +272,112 @@
                                 <i class="fas fa-tools me-2"></i>Quick Actions
                             </h5>
                         </div>
-<div class="row">
-    <div class="col-12">
-        <div class="alert alert-info" role="alert">
-            <i class="fas fa-bug me-2"></i>
-            <strong>Debug Information:</strong> This page helps identify why DMs might not be sent.
-        </div>
-        
-        <!-- Configuration Status -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-heartbeat me-2"></i>Configuration Status
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        {% if debug.config_status == 'success' %}
-                            <div class="alert alert-success" role="alert">
-                                <i class="fas fa-check-circle me-2"></i>
-                                {{ debug.status_message }}
-                            </div>
-                        {% else %}
-                            <div class="alert alert-warning" role="alert">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                {{ debug.status_message }}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Issues Section -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-exclamation-triangle me-2"></i>Configuration Issues
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        {% if debug.login_issues %}
-                            <h6 class="text-danger">Instagram Login Issues:</h6>
-                            <ul class="list-unstyled">
-                                {% for issue in debug.login_issues %}
-                                <li class="mb-2">
-                                    <i class="fas fa-times-circle text-danger me-2"></i>{{ issue }}
-                                </li>
-                                {% endfor %}
-                            </ul>
-                            <a href="{{ url_for('instagram_login_page') }}" class="btn btn-primary btn-sm">
-                                <i class="fab fa-instagram me-1"></i>Fix Instagram Login
-                            </a>
-                        {% endif %}
-                        
-                        {% if debug.keyword_issues %}
-                            <h6 class="text-warning">Keyword Issues:</h6>
-                            <ul class="list-unstyled">
-                                {% for issue in debug.keyword_issues %}
-                                <li class="mb-2">
-                                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>{{ issue }}
-                                </li>
-                                {% endfor %}
-                            </ul>
-                            <a href="{{ url_for('manage_keywords') }}" class="btn btn-warning btn-sm">
-                                <i class="fas fa-tags me-1"></i>Fix Keywords
-                            </a>
-                        {% endif %}
-                        
-                        {% if debug.post_issues %}
-                            <h6 class="text-info">Post Monitoring Issues:</h6>
-                            <ul class="list-unstyled">
-                                {% for issue in debug.post_issues %}
-                                <li class="mb-2">
-                                    <i class="fas fa-info-circle text-info me-2"></i>{{ issue }}
-                                </li>
-                                {% endfor %}
-                            </ul>
-                            <a href="{{ url_for('posts_page') }}" class="btn btn-info btn-sm">
-                                <i class="fas fa-images me-1"></i>Fix Posts
-                            </a>
-                        {% endif %}
-                        
-                        {% if not debug.login_issues and not debug.keyword_issues and not debug.post_issues %}
-                            <p class="text-success mb-0">
-                                <i class="fas fa-check-circle me-2"></i>
-                                No configuration issues found!
-                            </p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Configuration Status -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-cog me-2"></i>Current Configuration
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6 class="text-primary">Instagram Account</h6>
-                        <ul class="list-unstyled">
-                            <li><strong>Username:</strong> {{ debug.config.instagram_username or 'Not set' }}</li>
-                            <li><strong>Session ID:</strong> 
-                                {% if debug.config.has_session_id %}
-                                    <span class="text-success">{{ debug.config.session_id_preview }}</span>
-                                {% else %}
-                                    <span class="text-danger">Not configured</span>
-                                {% endif %}
-                            </li>
-                        </ul>
-                        
-                        <h6 class="text-primary">Keywords</h6>
-                        <ul class="list-unstyled">
-                            {% if debug.config.keywords %}
-                                {% for keyword in debug.config.keywords %}
-                                <li><span class="badge bg-secondary">{{ keyword }}</span></li>
-                                {% endfor %}
-                            {% else %}
-                                <li class="text-muted">No keywords configured</li>
-                            {% endif %}
-                        </ul>
-                    </div>
-                    <div class="col-md-6">
-                        <h6 class="text-primary">Post Monitoring</h6>
-                        <ul class="list-unstyled">
-                            <li><strong>Monitor All Posts:</strong> 
-                                <span class="badge {{ 'bg-success' if debug.config.monitor_all_posts else 'bg-warning' }}">
-                                    {{ 'Yes' if debug.config.monitor_all_posts else 'No' }}
-                                </span>
-                            </li>
-                            <li><strong>Specific Posts:</strong>
-                                {% if debug.config.specific_post_ids %}
-                                    {% for post_id in debug.config.specific_post_ids %}
-                                    <span class="badge bg-info">{{ post_id }}</span>
-                                    {% endfor %}
-                                {% else %}
-                                    <span class="text-muted">None selected</span>
-                                {% endif %}
-                            </li>
-                        </ul>
-                        
-                        <h6 class="text-primary">Settings</h6>
-                        <ul class="list-unstyled">
-                            <li><strong>Check Interval:</strong> {{ debug.config.check_interval }} seconds</li>
-                            <li><strong>Default Link:</strong> 
-                                <small class="text-truncate d-block">{{ debug.config.default_link }}</small>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Recent Posts Status -->
-        {% if debug.recent_posts %}
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-images me-2"></i>Recent Posts Status
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Post ID</th>
-                                <th>Date</th>
-                                <th>Caption Preview</th>
-                                <th>Monitored</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for post in debug.recent_posts %}
-                            <tr>
-                                <td><code>{{ post.code }}</code></td>
-                                <td>{{ post.date }}</td>
-                                <td>{{ post.caption_preview }}</td>
-                                <td>
-                                    <span class="badge bg-{{ 'success' if post.is_monitored else 'secondary' }}">
-                                        {{ 'YES' if post.is_monitored else 'NO' }}
-                                    </span>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        {% elif debug.posts_error %}
-        <div class="card mb-4">
-            <div class="card-header bg-warning">
-                <h5 class="mb-0">Posts Loading Error</h5>
-            </div>
-            <div class="card-body">
-                <p class="text-warning">{{ debug.posts_error }}</p>
-            </div>
-        </div>
-        {% endif %}
-        
-        <!-- Quick Actions -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-tools me-2"></i>Quick Actions
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="btn-group" role="group">
-                    <a href="/manage_posts" class="btn btn-primary">
-                        <i class="fas fa-list-check me-1"></i>Manage Posts
-                    </a>
-                    <a href="/manage_keywords" class="btn btn-success">
-                        <i class="fas fa-tags me-1"></i>Manage Keywords
-                    </a>
-                    <a href="/logs" class="btn btn-info">
-                        <i class="fas fa-file-alt me-1"></i>View Logs
-                    </a>
-                    <button onclick="location.reload()" class="btn btn-secondary">
-                        <i class="fas fa-sync-alt me-1"></i>Refresh
-                    </button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- DM Troubleshooting -->
-        <div class="card mt-4">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-envelope me-2"></i>DM Troubleshooting Guide
-                </h5>
-            </div>
-            <div class="card-body">
-                <h6 class="text-primary">Common DM Issues & Solutions</h6>
-                
-                <div class="accordion" id="dmTroubleshooting">
-                    <div class="accordion-item">
-                        <h2 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#error403">
-                                ❌ Error 403: DM Blocked/Forbidden
-                            </button>
-                        </h2>
-                        <div id="error403" class="accordion-collapse collapse" data-bs-parent="#dmTroubleshooting">
-                            <div class="accordion-body">
-                                <strong>Most common cause:</strong> The user doesn't follow your account.
-                                <ul>
-                                    <li>Instagram restricts DMs to non-followers</li>
-                                    <li>User may have DM restrictions enabled</li>
-                                    <li>Your account may be flagged for automation</li>
-                                    <li><strong>Solution:</strong> Ask users to follow you before commenting</li>
-                                </ul>
+                        <div class="card-body">
+                            <div class="btn-group" role="group">
+                                <a href="/manage_posts" class="btn btn-primary">
+                                    <i class="fas fa-list-check me-1"></i>Manage Posts
+                                </a>
+                                <a href="/manage_keywords" class="btn btn-success">
+                                    <i class="fas fa-tags me-1"></i>Manage Keywords
+                                </a>
+                                <a href="/logs" class="btn btn-info">
+                                    <i class="fas fa-file-alt me-1"></i>View Logs
+                                </a>
+                                <button onclick="location.reload()" class="btn btn-secondary">
+                                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                                </button>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="accordion-item">
-                        <h2 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#error400">
-                                ⚠️ Error 400: Bad Request
-                            </button>
-                        </h2>
-                        <div id="error400" class="accordion-collapse collapse" data-bs-parent="#dmTroubleshooting">
-                            <div class="accordion-body">
-                                <strong>Message content issues:</strong>
-                                <ul>
-                                    <li>Links may be blocked as spam</li>
-                                    <li>Message too long (limit ~1000 characters)</li>
-                                    <li>Contains restricted words/phrases</li>
-                                    <li><strong>Solution:</strong> Simplify message, avoid direct links</li>
-                                </ul>
-                            </div>
+                    <!-- DM Troubleshooting -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-envelope me-2"></i>DM Troubleshooting Guide
+                            </h5>
                         </div>
-                    </div>
-                    
-                    <div class="accordion-item">
-                        <h2 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#rateLimit">
-                                ⏱️ Rate Limiting
-                            </button>
-                        </h2>
-                        <div id="rateLimit" class="accordion-collapse collapse" data-bs-parent="#dmTroubleshooting">
-                            <div class="accordion-body">
-                                <strong>Too many DMs sent:</strong>
-                                <ul>
-                                    <li>Instagram limits DMs per hour/day</li>
-                                    <li>New accounts have stricter limits</li>
-                                    <li>Automation can trigger restrictions</li>
-                                    <li><strong>Solution:</strong> Increase check intervals, send fewer DMs</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="accordion-item">
-                        <h2 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#bestPractices">
-                                ✅ Best Practices
-                            </button>
-                        </h2>
-                        <div id="bestPractices" class="accordion-collapse collapse" data-bs-parent="#dmTroubleshooting">
-                            <div class="accordion-body">
-                                <strong>To improve DM success rate:</strong>
-                                <ul>
-                                    <li>Encourage users to follow you first</li>
-                                    <li>Keep messages short and natural</li>
-                                    <li>Use longer check intervals (60+ seconds)</li>
-                                    <li>Avoid obvious automation patterns</li>
-                                    <li>Test with your own accounts first</li>
-                                    <li>Consider commenting back instead of DMing</li>
-                                </ul>
+                        <div class="card-body">
+                            <h6 class="text-primary">Common DM Issues & Solutions</h6>
+                            
+                            <div class="accordion" id="dmTroubleshooting">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#error403">
+                                            ❌ Error 403: DM Blocked/Forbidden
+                                        </button>
+                                    </h2>
+                                    <div id="error403" class="accordion-collapse collapse" data-bs-parent="#dmTroubleshooting">
+                                        <div class="accordion-body">
+                                            <strong>Most common cause:</strong> The user doesn't follow your account.
+                                            <ul>
+                                                <li>Instagram restricts DMs to non-followers</li>
+                                                <li>User may have DM restrictions enabled</li>
+                                                <li>Your account may be flagged for automation</li>
+                                                <li><strong>Solution:</strong> Ask users to follow you before commenting</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#error400">
+                                            ⚠️ Error 400: Bad Request
+                                        </button>
+                                    </h2>
+                                    <div id="error400" class="accordion-collapse collapse" data-bs-parent="#dmTroubleshooting">
+                                        <div class="accordion-body">
+                                            <strong>Message content issues:</strong>
+                                            <ul>
+                                                <li>Links may be blocked as spam</li>
+                                                <li>Message too long (limit ~1000 characters)</li>
+                                                <li>Contains restricted words/phrases</li>
+                                                <li><strong>Solution:</strong> Simplify message, avoid direct links</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#rateLimit">
+                                            ⏱️ Rate Limiting
+                                        </button>
+                                    </h2>
+                                    <div id="rateLimit" class="accordion-collapse collapse" data-bs-parent="#dmTroubleshooting">
+                                        <div class="accordion-body">
+                                            <strong>Too many DMs sent:</strong>
+                                            <ul>
+                                                <li>Instagram limits DMs per hour/day</li>
+                                                <li>New accounts have stricter limits</li>
+                                                <li>Automation can trigger restrictions</li>
+                                                <li><strong>Solution:</strong> Increase check intervals, send fewer DMs</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#bestPractices">
+                                            ✅ Best Practices
+                                        </button>
+                                    </h2>
+                                    <div id="bestPractices" class="accordion-collapse collapse" data-bs-parent="#dmTroubleshooting">
+                                        <div class="accordion-body">
+                                            <strong>To improve DM success rate:</strong>
+                                            <ul>
+                                                <li>Encourage users to follow you first</li>
+                                                <li>Keep messages short and natural</li>
+                                                <li>Use longer check intervals (60+ seconds)</li>
+                                                <li>Avoid obvious automation patterns</li>
+                                                <li>Test with your own accounts first</li>
+                                                <li>Consider commenting back instead of DMing</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
