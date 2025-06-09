@@ -12,11 +12,6 @@ class Config:
     INSTAGRAM_USER_ID = None  # Set via OAuth
     OAUTH_STATE_SECRET = os.getenv('OAUTH_STATE_SECRET', 'your-secure-state-secret')
     
-    # Legacy credentials (for backward compatibility)
-    INSTAGRAM_USERNAME = os.getenv('INSTAGRAM_USERNAME')
-    INSTAGRAM_PASSWORD = os.getenv('INSTAGRAM_PASSWORD')
-    INSTAGRAM_SESSION_ID = None  # Will be managed through web interface
-    
     # WEBHOOK CONFIGURATION (ManyChat Strategy)
     # ========================================
     WEBHOOK_BASE_URL = os.getenv('WEBHOOK_BASE_URL', 'https://instagram-dm-bot-tk4d.onrender.com')
@@ -111,10 +106,7 @@ Let me know if you have any questions! 🙂"""
                 cls.INSTAGRAM_USER_ID = config_data.get('INSTAGRAM_USER_ID', cls.INSTAGRAM_USER_ID)
                 cls.OAUTH_STATE_SECRET = config_data.get('OAUTH_STATE_SECRET', cls.OAUTH_STATE_SECRET)
                 
-                # Load legacy settings for backward compatibility
-                cls.INSTAGRAM_SESSION_ID = config_data.get('INSTAGRAM_SESSION_ID', cls.INSTAGRAM_SESSION_ID)
-                
-                # Update keywords
+                # Load keywords
                 cls.CONSENT_KEYWORDS = config_data.get('CONSENT_KEYWORDS', cls.CONSENT_KEYWORDS)
                 cls.INTEREST_KEYWORDS = config_data.get('INTEREST_KEYWORDS', cls.INTEREST_KEYWORDS)
                 cls.KEYWORDS = config_data.get('KEYWORDS', cls.CONSENT_KEYWORDS + cls.INTEREST_KEYWORDS)
@@ -161,9 +153,6 @@ Let me know if you have any questions! 🙂"""
                 'INSTAGRAM_ACCESS_TOKEN': cls.INSTAGRAM_ACCESS_TOKEN,
                 'INSTAGRAM_USER_ID': cls.INSTAGRAM_USER_ID,
                 'OAUTH_STATE_SECRET': cls.OAUTH_STATE_SECRET,
-                
-                # Legacy (for backward compatibility)
-                'INSTAGRAM_SESSION_ID': cls.INSTAGRAM_SESSION_ID,
                 
                 # Rate Limiting
                 'MAX_DMS_PER_HOUR': cls.MAX_DMS_PER_HOUR,

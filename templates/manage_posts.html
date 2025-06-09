@@ -1,381 +1,230 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Posts - Instagram DM Bot</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+{% extends "base.html" %}
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
-            min-height: 100vh;
-        }
+{% block header %}Manage Posts{% endblock %}
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
+{% block header_buttons %}
+<a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+</a>
+{% endblock %}
 
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .nav {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .nav a {
-            padding: 10px 20px;
-            background: #667eea;
-            color: white;
-            text-decoration: none;
-            border-radius: 25px;
-            transition: all 0.3s ease;
-        }
-
-        .nav a:hover, .nav a.active {
-            background: #764ba2;
-            transform: translateY(-2px);
-        }
-
-        .status {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 600;
-        }
-
-        .status-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-
-        .status-active { background: #4CAF50; }
-        .status-inactive { background: #f44336; }
-
-        .card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 2.5rem;
-        }
-
-        h2 {
-            color: #667eea;
-            margin-bottom: 20px;
-            font-size: 1.8rem;
-        }
-
-        .error {
-            background: #ffe6e6;
-            color: #d8000c;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border-left: 4px solid #d8000c;
-        }
-
-        .success {
-            background: #d4edda;
-            color: #155724;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border-left: 4px solid #28a745;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .posts-grid {
-            display: grid;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .post-card {
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            padding: 20px;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .post-card:hover {
-            border-color: #667eea;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .post-card.monitored {
-            border-color: #4CAF50;
-            background: #f8fff8;
-        }
-
-        .post-checkbox {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            transform: scale(1.5);
-        }
-
-        .post-code {
-            font-weight: 600;
-            color: #667eea;
-            margin-bottom: 10px;
-        }
-
-        .post-url {
-            color: #666;
-            text-decoration: none;
-            font-size: 0.9rem;
-            margin-bottom: 10px;
-            display: block;
-        }
-
-        .post-url:hover {
-            color: #667eea;
-        }
-
-        .post-caption {
-            color: #333;
-            margin-bottom: 10px;
-            line-height: 1.4;
-        }
-
-        .post-date {
-            color: #888;
-            font-size: 0.9rem;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
-        }
-
-        .select-all-controls {
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .monitoring-status {
-            background: #e8f4fd;
-            border: 1px solid #b3d9ff;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>📋 Manage Posts</h1>
-            <div class="nav">
-                <a href="/">Dashboard</a>
-                <a href="/posts">Recent Posts</a>
-                <a href="/manage_posts" class="active">Manage Posts</a>
-                <a href="/manage_keywords">Keywords & Settings</a>
-                <a href="/config">Bot Configuration</a>
-                <a href="/logs">Activity Logs</a>
-            </div>
-            <div class="status">
-                <span class="status-indicator {{ 'status-active' if bot_status['running'] else 'status-inactive' }}"></span>
-                Bot Status: {{ 'Running' if bot_status['running'] else 'Stopped' }}
-                {% if bot_status['logged_in'] %}
-                    | Logged in as @{{ bot_status['username'] }}
-                {% endif %}
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Instructions -->
+        <div class="alert alert-info" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-info-circle fa-2x me-3"></i>
+                <div>
+                    <h6 class="mb-1">📍 Select Posts to Monitor</h6>
+                    <p class="mb-0">Choose which posts the bot should monitor for comments. You can either monitor ALL posts or select specific ones.</p>
+                </div>
             </div>
         </div>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="{{ 'success' if category == 'success' else 'error' }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        {% if error %}
-            <div class="error">{{ error }}</div>
-        {% endif %}
-
-        <div class="card">
-            <h2>🎯 Select Posts to Monitor</h2>
-            
-            {% if posts %}
-                <div class="monitoring-status">
-                    <strong>Current Status:</strong> 
-                    {% if current_posts %}
-                        Monitoring {{ current_posts|length }} specific posts
-                    {% else %}
-                        Monitoring all posts (no specific selection)
-                    {% endif %}
-                    <span class="text-muted"> | Showing up to 50 recent posts</span>
+        <!-- Post Monitoring Configuration -->
+        <form method="POST" action="{{ url_for('update_monitored_posts') }}">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-target me-2"></i>Monitoring Strategy
+                    </h5>
                 </div>
+                <div class="card-body">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="monitor_all" name="monitor_all" 
+                               {% if monitor_all %}checked{% endif %} onchange="togglePostSelection()">
+                        <label class="form-check-label" for="monitor_all">
+                            <strong>Monitor ALL Posts</strong>
+                            <small class="d-block text-muted">Automatically process comments on all your posts (recommended for maximum reach)</small>
+                        </label>
+                    </div>
+                    
+                    <div id="specific-posts-section" {% if monitor_all %}style="display: none;"{% endif %}>
+                        <h6 class="text-primary mb-3">Or select specific posts to monitor:</h6>
+                        
+                        {% if posts %}
+                            <div class="row">
+                                {% for post in posts %}
+                                <div class="col-md-6 col-lg-4 mb-4">
+                                    <div class="card h-100 post-card {% if post.is_monitored %}border-success{% endif %}">
+                                        <div class="position-relative">
+                                            {% if post.media_url %}
+                                                <img src="{{ post.media_url }}" class="card-img-top" alt="Post image" 
+                                                     style="height: 200px; object-fit: cover;">
+                                            {% else %}
+                                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
+                                                     style="height: 200px;">
+                                                    <i class="fas fa-image fa-3x text-muted"></i>
+                                                </div>
+                                            {% endif %}
+                                            
+                                            <div class="position-absolute top-0 end-0 p-2">
+                                                <div class="form-check">
+                                                    <input class="form-check-input post-checkbox" type="checkbox" 
+                                                           name="monitored_posts" value="{{ post.id }}" 
+                                                           id="post_{{ post.id }}" 
+                                                           {% if post.is_monitored %}checked{% endif %}>
+                                                    <label class="form-check-label" for="post_{{ post.id }}">
+                                                        <span class="badge {% if post.is_monitored %}bg-success{% else %}bg-secondary{% endif %}">
+                                                            {% if post.is_monitored %}Monitoring{% else %}Not Monitored{% endif %}
+                                                        </span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="card-body">
+                                            <p class="card-text small">{{ post.caption }}</p>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-calendar me-1"></i>
+                                                    {{ post.timestamp[:10] if post.timestamp else 'Unknown date' }}
+                                                </small>
+                                                <a href="{{ post.permalink }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fab fa-instagram me-1"></i>View
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="fas fa-images fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">No Posts Available</h5>
+                                <p class="text-muted">Unable to load your Instagram posts. Please ensure your account is properly connected.</p>
+                                <a href="{{ url_for('instagram_login') }}" class="btn btn-primary">
+                                    <i class="fab fa-instagram me-1"></i>Check Instagram Connection
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
 
-                <form method="POST" action="/update_monitored_posts">
-                    <div class="select-all-controls">
-                        <button type="button" onclick="selectAll()" class="btn btn-secondary">Select All</button>
-                        <button type="button" onclick="selectNone()" class="btn btn-secondary">Select None</button>
-                        <input type="text" id="search-posts" placeholder="Search posts by caption..." 
-                               style="margin-left: 20px; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
-                        <span style="margin-left: 15px; color: #666;">
-                            Select specific posts to monitor, or leave all unchecked to monitor all posts
-                        </span>
-                        <div class="mt-2">
-                            <small class="text-info">
-                                <i class="fas fa-info-circle me-1"></i>
-                                <span id="selected-count">0</span> of {{ posts|length }} posts selected | 
-                                <span id="visible-count">{{ posts|length }}</span> posts visible
-                            </small>
+            <!-- Save Button -->
+            {% if posts %}
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="fas fa-save me-2"></i>Update Post Monitoring
+                </button>
+            </div>
+            {% endif %}
+        </form>
+
+        <!-- Current Status -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Current Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-target fa-2x {% if monitor_all or (posts and any(p.is_monitored for p in posts)) %}text-success{% else %}text-warning{% endif %}"></i>
+                            </div>
+                            <h6>Monitoring Strategy</h6>
+                            <span class="badge {% if monitor_all %}bg-success{% elif posts and any(p.is_monitored for p in posts) %}bg-info{% else %}bg-warning{% endif %}">
+                                {% if monitor_all %}
+                                    All Posts
+                                {% elif posts and any(p.is_monitored for p in posts) %}
+                                    {{ posts | selectattr('is_monitored') | list | length }} Selected Posts
+                                {% else %}
+                                    No Posts Monitored
+                                {% endif %}
+                            </span>
                         </div>
                     </div>
-
-                    <div class="posts-grid">
-                        {% for post in posts %}
-                            <div class="post-card {{ 'monitored' if post.monitored else '' }}">
-                                <input type="checkbox" 
-                                       name="selected_posts" 
-                                       value="{{ post.code }}" 
-                                       class="post-checkbox"
-                                       {{ 'checked' if post.monitored else '' }}>
-                                
-                                <div class="post-code">Post ID: {{ post.code }}</div>
-                                <a href="{{ post.url }}" target="_blank" class="post-url">{{ post.url }}</a>
-                                <div class="post-caption">{{ post.caption }}</div>
-                                <div class="post-date">Posted: {{ post.date }}</div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-images fa-2x text-info"></i>
                             </div>
-                        {% endfor %}
+                            <h6>Available Posts</h6>
+                            <span class="badge bg-info">{{ posts | length if posts else 0 }} Posts</span>
+                        </div>
                     </div>
-
-                    <button type="submit" class="btn">💾 Update Monitored Posts</button>
-                </form>
-            {% else %}
-                <p>No posts available. Please ensure the bot is logged in and try refreshing the page.</p>
-                <a href="/" class="btn btn-secondary">Go to Dashboard</a>
-            {% endif %}
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-bolt fa-2x {% if bot_status.webhook_active %}text-success{% else %}text-muted{% endif %}"></i>
+                            </div>
+                            <h6>Webhook Status</h6>
+                            <span class="badge {% if bot_status.webhook_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                {% if bot_status.webhook_active %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+</div>
+{% endblock %}
 
-    <script>
-        function selectAll() {
-            const checkboxes = document.querySelectorAll('input[name="selected_posts"]');
-            checkboxes.forEach(cb => cb.checked = true);
-            updatePostCards();
-        }
-
-        function selectNone() {
-            const checkboxes = document.querySelectorAll('input[name="selected_posts"]');
-            checkboxes.forEach(cb => cb.checked = false);
-            updatePostCards();
-        }
-
-        function updatePostCards() {
-            const checkboxes = document.querySelectorAll('input[name="selected_posts"]');
-            let selectedCount = 0;
-            let visibleCount = 0;
-            
-            checkboxes.forEach(cb => {
-                const card = cb.closest('.post-card');
-                if (card.style.display !== 'none') {
-                    visibleCount++;
-                }
-                if (cb.checked) {
-                    card.classList.add('monitored');
-                    selectedCount++;
-                } else {
-                    card.classList.remove('monitored');
-                }
-            });
-            
-            // Update counters
-            document.getElementById('selected-count').textContent = selectedCount;
-            document.getElementById('visible-count').textContent = visibleCount;
-        }
-        
-        function filterPosts() {
-            const searchTerm = document.getElementById('search-posts').value.toLowerCase();
-            const postCards = document.querySelectorAll('.post-card');
-            
-            postCards.forEach(card => {
-                const caption = card.querySelector('.post-caption').textContent.toLowerCase();
-                const postCode = card.querySelector('.post-code').textContent.toLowerCase();
-                
-                if (caption.includes(searchTerm) || postCode.includes(searchTerm)) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-            
-            updatePostCards();
-        }
-
-        // Add event listeners to checkboxes
-        document.addEventListener('DOMContentLoaded', function() {
-            const checkboxes = document.querySelectorAll('input[name="selected_posts"]');
-            checkboxes.forEach(cb => {
-                cb.addEventListener('change', updatePostCards);
-            });
-            
-            // Add search functionality
-            const searchBox = document.getElementById('search-posts');
-            searchBox.addEventListener('input', filterPosts);
-            
-            // Initialize counters
-            updatePostCards();
+{% block scripts %}
+<script>
+function togglePostSelection() {
+    const monitorAll = document.getElementById('monitor_all');
+    const specificSection = document.getElementById('specific-posts-section');
+    const postCheckboxes = document.querySelectorAll('.post-checkbox');
+    
+    if (monitorAll.checked) {
+        specificSection.style.display = 'none';
+        // Uncheck all specific post checkboxes
+        postCheckboxes.forEach(checkbox => {
+            checkbox.checked = false;
         });
-    </script>
-</body>
-</html> 
+    } else {
+        specificSection.style.display = 'block';
+    }
+}
+
+// Update badge colors when checkboxes change
+document.addEventListener('DOMContentLoaded', function() {
+    const postCheckboxes = document.querySelectorAll('.post-checkbox');
+    
+    postCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const badge = this.closest('.post-card').querySelector('.badge');
+            const card = this.closest('.post-card');
+            
+            if (this.checked) {
+                badge.textContent = 'Monitoring';
+                badge.className = 'badge bg-success';
+                card.classList.add('border-success');
+            } else {
+                badge.textContent = 'Not Monitored';
+                badge.className = 'badge bg-secondary';
+                card.classList.remove('border-success');
+            }
+        });
+    });
+});
+</script>
+
+<style>
+.post-card {
+    transition: all 0.3s ease;
+}
+
+.post-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.post-card.border-success {
+    border-width: 2px !important;
+}
+
+.form-check-input:checked {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+</style>
+{% endblock %} 

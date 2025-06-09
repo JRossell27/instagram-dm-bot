@@ -18,7 +18,7 @@ logging.basicConfig(
     ]
 )
 
-class InstagramBusinessBot:
+class InstagramBot:
     def __init__(self):
         self.db = Database()
         self.logged_in = False
@@ -324,4 +324,4 @@ class InstagramBusinessBot:
             return {'error': str(e)}
 
 # For backward compatibility, create an alias
-InstagramBot = InstagramBusinessBot 
+InstagramBot = InstagramBot 

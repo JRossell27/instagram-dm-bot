@@ -91,6 +91,9 @@
                         <a href="{{ url_for('dashboard') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'dashboard' }}">
                             <i class="fas fa-tachometer-alt me-2"></i>Dashboard
                         </a>
+                        <a href="{{ url_for('manage_posts') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'manage_posts' }}">
+                            <i class="fas fa-images me-2"></i>Manage Posts
+                        </a>
                         <a href="{{ url_for('manage_keywords') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'manage_keywords' }}">
                             <i class="fas fa-tags me-2"></i>Manage Keywords
                         </a>

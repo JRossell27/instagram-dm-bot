@@ -300,45 +300,49 @@
                 </h5>
             </div>
             <div class="card-body">
-                <form id="postMonitoringForm">
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="monitoring_type" id="monitorAll" value="all" 
-                                   {% if stats.monitor_all_posts %}checked{% endif %}>
-                            <label class="form-check-label" for="monitorAll">
-                                <strong>Monitor ALL Posts</strong>
-                                <small class="d-block text-muted">Webhooks will process comments from all your posts</small>
-                            </label>
-                        </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="monitoring_display" id="monitorAllDisplay" 
+                               {% if stats.monitor_all_posts %}checked{% endif %} disabled>
+                        <label class="form-check-label" for="monitorAllDisplay">
+                            <strong>Monitor ALL Posts</strong>
+                            <small class="d-block text-muted">Processing comments from all your posts</small>
+                        </label>
                     </div>
-                    
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="monitoring_type" id="monitorSpecific" value="specific"
-                                   {% if not stats.monitor_all_posts %}checked{% endif %}>
-                            <label class="form-check-label" for="monitorSpecific">
-                                <strong>Monitor Specific Posts</strong>
-                                <small class="d-block text-muted">Only process comments from selected posts</small>
-                            </label>
-                        </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="monitoring_display" id="monitorSpecificDisplay"
+                               {% if not stats.monitor_all_posts %}checked{% endif %} disabled>
+                        <label class="form-check-label" for="monitorSpecificDisplay">
+                            <strong>Monitor Specific Posts</strong>
+                            <small class="d-block text-muted">
+                                {% if stats.monitored_post_ids %}
+                                    Currently monitoring {{ stats.monitored_post_ids | length }} selected posts
+                                {% else %}
+                                    No specific posts selected
+                                {% endif %}
+                            </small>
+                        </label>
                     </div>
-                    
-                    <div id="specificPostsSection" {% if stats.monitor_all_posts %}style="display: none;"{% endif %}>
-                        <div class="mb-3">
-                            <label for="postIds" class="form-label">Post IDs to Monitor</label>
-                            <textarea class="form-control" id="postIds" rows="3" 
-                                      placeholder="Enter Instagram post IDs, one per line&#10;Example:&#10;17841234567890123&#10;17841234567890124">{{ stats.monitored_post_ids | join('\n') if stats.monitored_post_ids else '' }}</textarea>
-                            <div class="form-text">
-                                <i class="fas fa-info-circle me-1"></i>
-                                Add post IDs after telling people to comment with keywords. Get post IDs from Instagram Business API or your media library.
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button type="button" class="btn btn-primary" onclick="updatePostMonitoring()">
-                        <i class="fas fa-save me-2"></i>Update Post Monitoring
-                    </button>
-                </form>
+                </div>
+                
+                <div class="alert alert-info mb-3">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    <strong>Current Status:</strong>
+                    {% if stats.monitor_all_posts %}
+                        <span class="text-success">Monitoring ALL posts</span> - Maximum reach enabled
+                    {% elif stats.monitored_post_ids %}
+                        <span class="text-primary">Monitoring {{ stats.monitored_post_ids | length }} specific posts</span>
+                    {% else %}
+                        <span class="text-warning">No posts being monitored</span> - Bot will not process comments
+                    {% endif %}
+                </div>
+                
+                <a href="{{ url_for('manage_posts') }}" class="btn btn-primary">
+                    <i class="fas fa-images me-2"></i>Select Posts to Monitor
+                </a>
             </div>
         </div>
     </div>
@@ -486,157 +490,73 @@
 </div>
 
 <!-- Recent Activity -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fas fa-history me-2"></i>Recent Webhook Activity
-                </h5>
-                <a href="{{ url_for('logs_page') }}" class="btn btn-sm btn-outline-secondary">
-                    View All Logs
-                </a>
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-history me-2"></i>Recent Activity
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if stats.recent_activity %}
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>User</th>
+                            <th>Comment</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for activity in stats.recent_activity %}
+                        <tr>
+                            <td>
+                                <small class="text-muted">{{ activity[3][:16] if activity[3] else 'Unknown' }}</small>
+                            </td>
+                            <td>
+                                <strong>@{{ activity[0] }}</strong>
+                            </td>
+                            <td>
+                                <span class="text-truncate d-inline-block" style="max-width: 200px;">
+                                    "{{ activity[1][:50] }}{{ '...' if activity[1]|length > 50 else '' }}"
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-success">
+                                    <i class="fas fa-paper-plane me-1"></i>DM Sent
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-            <div class="card-body">
-                {% if stats.recent_activity %}
-                    {% for activity in stats.recent_activity %}
-                    <div class="activity-item">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <strong>@{{ activity[0] }}</strong> commented with keyword 
-                                <span class="badge bg-primary">{{ activity[1] }}</span>
-                                {% if 'dm_sent' in activity[6] %}
-                                    <span class="badge bg-success ms-1">
-                                        <i class="fas fa-paper-plane me-1"></i>DM Sent
-                                    </span>
-                                {% endif %}
-                            </div>
-                            <small class="text-muted">{{ activity[2] }}</small>
-                        </div>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="text-center text-muted py-4">
-                        <i class="fas fa-satellite-dish fa-3x mb-3"></i>
-                        <p>No webhook activity yet</p>
-                        <p class="small">Real-time comment notifications will appear here when users comment with your keywords</p>
-                        <a href="/webhook-test" class="btn btn-outline-primary btn-sm">
-                            <i class="fas fa-vial me-1"></i>Test Webhook Processing
-                        </a>
-                    </div>
-                {% endif %}
+        {% else %}
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-clock fa-2x mb-2"></i>
+                <p>No recent activity to display</p>
+                <small>Activity will appear here when the bot processes comments</small>
             </div>
-        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Auto-refresh dashboard every 30 seconds for real-time updates
-    setInterval(function() {
-        location.reload();
-    }, 30000);
-    
-    // Show/hide specific posts section based on monitoring type selection
-    document.addEventListener('DOMContentLoaded', function() {
-        const monitorAll = document.getElementById('monitorAll');
-        const monitorSpecific = document.getElementById('monitorSpecific');
-        const specificSection = document.getElementById('specificPostsSection');
-        
-        function toggleSpecificSection() {
-            if (monitorSpecific.checked) {
-                specificSection.style.display = 'block';
-            } else {
-                specificSection.style.display = 'none';
-            }
-        }
-        
-        monitorAll.addEventListener('change', toggleSpecificSection);
-        monitorSpecific.addEventListener('change', toggleSpecificSection);
-    });
-    
-    // Update post monitoring configuration
-    function updatePostMonitoring() {
-        const monitorAll = document.getElementById('monitorAll').checked;
-        const postIds = document.getElementById('postIds').value.trim();
-        
-        const data = {
-            monitor_all_posts: monitorAll,
-            monitored_post_ids: monitorAll ? [] : postIds.split('\n').filter(id => id.trim())
-        };
-        
-        fetch('/api/update-post-monitoring', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-        })
+// Auto-refresh bot status every 30 seconds
+setInterval(function() {
+    fetch('/api/status')
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                showAlert('Post monitoring configuration updated successfully!', 'success');
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                showAlert(data.message || 'Failed to update post monitoring configuration', 'error');
+            // Update webhook status indicator
+            const statusIndicator = document.querySelector('.webhook-status-indicator');
+            if (statusIndicator) {
+                statusIndicator.className = `webhook-status-indicator ${data.webhook_active ? 'status-active' : 'status-inactive'}`;
             }
         })
-        .catch(error => {
-            console.error('Error:', error);
-            showAlert('Error updating post monitoring configuration', 'error');
-        });
-    }
-    
-    // Update keyword strategy configuration
-    function updateKeywordStrategy() {
-        const consentRequired = document.getElementById('consentRequired').checked;
-        const keywordStrategy = consentRequired ? 'consent_required' : 'any_keyword';
-        
-        const data = {
-            keyword_strategy: keywordStrategy
-        };
-        
-        fetch('/api/update-keyword-strategy', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showAlert('Keyword strategy updated successfully!', 'success');
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                showAlert(data.message || 'Failed to update keyword strategy', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showAlert('Error updating keyword strategy', 'error');
-        });
-    }
-    
-    // Show alert messages
-    function showAlert(message, type) {
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
-        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
-        alertDiv.innerHTML = `
-            <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        document.body.appendChild(alertDiv);
-        
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            if (alertDiv.parentNode) {
-                alertDiv.parentNode.removeChild(alertDiv);
-            }
-        }, 5000);
-    }
+        .catch(error => console.log('Status update failed:', error));
+}, 30000);
 </script>
 {% endblock %} 

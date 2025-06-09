@@ -109,7 +109,7 @@
                                             </li>
                                             {% endfor %}
                                         </ul>
-                                        <a href="{{ url_for('instagram_login_page') }}" class="btn btn-primary btn-sm">
+                                        <a href="{{ url_for('instagram_login') }}" class="btn btn-primary btn-sm">
                                             <i class="fab fa-instagram me-1"></i>Fix Instagram Login
                                         </a>
                                     {% endif %}
@@ -274,7 +274,7 @@
                         </div>
                         <div class="card-body">
                             <div class="btn-group" role="group">
-                                <a href="/manage_posts" class="btn btn-primary">
+                                <a href="{{ url_for('manage_posts') }}" class="btn btn-primary">
                                     <i class="fas fa-list-check me-1"></i>Manage Posts
                                 </a>
                                 <a href="/manage_keywords" class="btn btn-success">

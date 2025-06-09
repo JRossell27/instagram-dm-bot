@@ -473,23 +473,9 @@ def webhook_test_page():
 
 @app.route('/instagram-setup')
 def instagram_setup():
-    """Instagram setup and login page"""
-    try:
-        # Check current login status
-        login_info = {
-            'username': Config.INSTAGRAM_USERNAME,
-            'has_session_id': bool(Config.INSTAGRAM_SESSION_ID),
-            'session_id_preview': f"{Config.INSTAGRAM_SESSION_ID[:8]}...{Config.INSTAGRAM_SESSION_ID[-8:]}" if Config.INSTAGRAM_SESSION_ID else None
-        }
-        
-        return render_template('instagram_login_manual.html', 
-                             login=login_info,
-                             bot_status=bot_status)
-                             
-    except Exception as e:
-        logging.error(f"Error in Instagram setup page: {e}")
-        flash(f'Error loading Instagram setup: {str(e)}', 'error')
-        return redirect(url_for('dashboard'))
+    """Instagram setup and login page - DEPRECATED"""
+    flash('⚠️ Please use the Instagram Business login instead.', 'info')
+    return redirect(url_for('instagram_login'))
 
 @app.route('/instagram_login')
 def instagram_login():
@@ -635,50 +621,15 @@ def auth_instagram_callback():
 
 @app.route('/instagram_login_manual')
 def instagram_login_manual():
-    """Manual Instagram session setup page"""
-    try:
-        # Check current login status
-        login_info = {
-            'username': Config.INSTAGRAM_USERNAME,
-            'has_session_id': bool(Config.INSTAGRAM_SESSION_ID),
-            'session_id_preview': f"{Config.INSTAGRAM_SESSION_ID[:8]}...{Config.INSTAGRAM_SESSION_ID[-8:]}" if Config.INSTAGRAM_SESSION_ID else None
-        }
-        
-        return render_template('instagram_login_manual.html', 
-                             login=login_info,
-                             bot_status=bot_status)
-                             
-    except Exception as e:
-        logging.error(f"Error in Instagram manual setup page: {e}")
-        flash(f'Error loading Instagram setup: {str(e)}', 'error')
-        return redirect(url_for('dashboard'))
+    """Manual Instagram session setup page - DEPRECATED"""
+    flash('⚠️ Manual session login is deprecated. Please use Instagram Business OAuth instead.', 'warning')
+    return redirect(url_for('instagram_login'))
 
 @app.route('/update_instagram_login', methods=['POST'])
 def update_instagram_login():
-    """Update Instagram login credentials"""
-    try:
-        session_id = request.form.get('session_id', '').strip()
-        
-        if session_id:
-            Config.INSTAGRAM_SESSION_ID = session_id
-            # Save to runtime config
-            Config.save_runtime_config()
-            
-            # Reinitialize bot with new session
-            global bot
-            bot = None  # Reset bot
-            if init_bot():
-                flash('✅ Instagram session ID updated and bot authenticated successfully!', 'success')
-            else:
-                flash('⚠️ Session ID saved but authentication failed. Please check the session ID.', 'warning')
-        else:
-            flash('❌ Please provide a valid session ID.', 'error')
-            
-    except Exception as e:
-        logging.error(f"Error updating Instagram login: {e}")
-        flash(f'❌ Error updating Instagram login: {str(e)}', 'error')
-    
-    return redirect(url_for('instagram_login_manual'))
+    """Update Instagram login credentials - DEPRECATED"""
+    flash('⚠️ Manual session login is no longer supported. Please use Instagram Business OAuth.', 'warning')
+    return redirect(url_for('instagram_login'))
 
 def get_instagram_account_info():
     """Get current Instagram account information for dashboard display"""
@@ -713,6 +664,82 @@ def get_instagram_account_info():
     except Exception as e:
         logging.error(f"Error getting Instagram account info: {e}")
         return None
+
+@app.route('/manage-posts')
+def manage_posts():
+    """Manage which posts to monitor - fetches real posts from Instagram"""
+    try:
+        if not Config.INSTAGRAM_ACCESS_TOKEN or not Config.INSTAGRAM_USER_ID:
+            flash('❌ Instagram Business account not connected. Please authenticate first.', 'error')
+            return redirect(url_for('instagram_login'))
+        
+        # Fetch recent posts from Instagram Business API
+        posts_url = f"https://graph.instagram.com/v21.0/{Config.INSTAGRAM_USER_ID}/media"
+        params = {
+            'fields': 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp',
+            'limit': 25,  # Get last 25 posts
+            'access_token': Config.INSTAGRAM_ACCESS_TOKEN
+        }
+        
+        response = requests.get(posts_url, params=params)
+        
+        if response.status_code == 200:
+            posts_data = response.json()
+            posts = []
+            
+            for post in posts_data.get('data', []):
+                # Only include posts that support comments (images/carousels)
+                if post.get('media_type') in ['IMAGE', 'CAROUSEL_ALBUM']:
+                    posts.append({
+                        'id': post.get('id'),
+                        'caption': (post.get('caption') or 'No caption')[:100] + ('...' if len(post.get('caption', '')) > 100 else ''),
+                        'media_type': post.get('media_type'),
+                        'media_url': post.get('media_url') or post.get('thumbnail_url'),
+                        'permalink': post.get('permalink'),
+                        'timestamp': post.get('timestamp'),
+                        'is_monitored': post.get('id') in Config.MONITORED_POST_IDS
+                    })
+            
+            return render_template('manage_posts.html', 
+                                 posts=posts,
+                                 monitor_all=Config.MONITOR_ALL_POSTS,
+                                 bot_status=bot_status)
+        else:
+            error_data = response.json() if response.text else {}
+            flash(f'❌ Failed to fetch posts: {error_data.get("error", {}).get("message", "Unknown error")}', 'error')
+            return render_template('manage_posts.html', posts=[], monitor_all=Config.MONITOR_ALL_POSTS, bot_status=bot_status)
+            
+    except Exception as e:
+        logging.error(f"Error in manage posts: {e}")
+        flash(f'❌ Error loading posts: {str(e)}', 'error')
+        return render_template('manage_posts.html', posts=[], monitor_all=Config.MONITOR_ALL_POSTS, bot_status=bot_status)
+
+@app.route('/update-monitored-posts', methods=['POST'])
+def update_monitored_posts():
+    """Update which posts are being monitored"""
+    try:
+        monitor_all = 'monitor_all' in request.form
+        selected_posts = request.form.getlist('monitored_posts')
+        
+        Config.MONITOR_ALL_POSTS = monitor_all
+        Config.MONITORED_POST_IDS = selected_posts if not monitor_all else []
+        
+        # Save configuration
+        Config.save_runtime_config()
+        
+        if monitor_all:
+            flash('✅ Now monitoring ALL posts for comments!', 'success')
+        elif selected_posts:
+            flash(f'✅ Now monitoring {len(selected_posts)} selected posts!', 'success')
+        else:
+            flash('⚠️ No posts selected for monitoring. Bot will not process any comments.', 'warning')
+        
+        return redirect(url_for('manage_posts'))
+        
+    except Exception as e:
+        logging.error(f"Error updating monitored posts: {e}")
+        flash(f'❌ Error updating posts: {str(e)}', 'error')
+        return redirect(url_for('manage_posts'))
 
 if __name__ == '__main__':
     # Load runtime configuration on startup
