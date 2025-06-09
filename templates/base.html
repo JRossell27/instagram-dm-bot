@@ -94,7 +94,7 @@
                         <a href="{{ url_for('posts_page') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'posts_page' }}">
                             <i class="fas fa-images me-2"></i>Manage Posts
                         </a>
-                        <a href="{{ url_for('keywords_page') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'keywords_page' }}">
+                        <a href="{{ url_for('manage_keywords') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'manage_keywords' }}">
                             <i class="fas fa-tags me-2"></i>Manage Keywords
                         </a>
                         <a href="{{ url_for('settings_page') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'settings_page' }}">
@@ -103,7 +103,7 @@
                         <a href="{{ url_for('instagram_login_page') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'instagram_login_page' }}">
                             <i class="fab fa-instagram me-2"></i>Instagram Login
                         </a>
-                        <a href="{{ url_for('logs') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'logs' }}">
+                        <a href="{{ url_for('logs_page') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'logs_page' }}">
                             <i class="fas fa-file-alt me-2"></i>View Logs
                         </a>
                         <a href="{{ url_for('debug_page') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'debug_page' }}">
