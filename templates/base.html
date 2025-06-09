@@ -100,6 +100,9 @@
                         <a href="{{ url_for('settings_page') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'settings_page' }}">
                             <i class="fas fa-cog me-2"></i>General Settings
                         </a>
+                        <a href="{{ url_for('webhook_test_page') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'webhook_test_page' }}">
+                            <i class="fas fa-bolt me-2"></i>Webhook Testing
+                        </a>
                         <a href="{{ url_for('instagram_login_pro_page') }}" class="list-group-item list-group-item-action {{ 'active' if request.endpoint == 'instagram_login_pro_page' }}">
                             <i class="fab fa-instagram me-2"></i>Instagram Login
                         </a>

@@ -843,6 +843,11 @@ def test_webhook():
         logging.error(f"Error in test webhook: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/webhook-test')
+def webhook_test_page():
+    """Webhook testing interface page"""
+    return render_template('webhook_test.html', bot_status=bot_status)
+
 if __name__ == '__main__':
     # Load runtime configuration on startup
     print("🔧 Loading runtime configuration...")

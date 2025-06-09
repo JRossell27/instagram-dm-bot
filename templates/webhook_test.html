@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block header %}Webhook Testing{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>Test Webhook Processing
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Test your webhook functionality with sample comment data to ensure ManyChat-style automation is working correctly.
+                </p>
+                
+                <form id="webhookTestForm">
+                    <div class="mb-3">
+                        <label for="comment_text" class="form-label">Comment Text</label>
+                        <input type="text" class="form-control" id="comment_text" name="comment_text" 
+                               value="dm me the link please" placeholder="Enter test comment...">
+                        <div class="form-text">Try: "dm me", "send me info", "interested", "details"</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       value="testuser" placeholder="@username">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="user_id" class="form-label">User ID</label>
+                                <input type="text" class="form-control" id="user_id" name="user_id" 
+                                       value="123456789" placeholder="Instagram user ID">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane me-2"></i>Send Test Webhook
+                    </button>
+                </form>
+                
+                <div id="test-result" class="mt-4" style="display: none;">
+                    <div class="alert" role="alert">
+                        <strong>Test Result:</strong>
+                        <div id="result-content"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Webhook Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Webhook URL:</strong><br>
+                    <code>{{ request.url_root }}webhook/instagram</code>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Test Endpoint:</strong><br>
+                    <code>{{ request.url_root }}webhook/test</code>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Expected Keywords:</strong>
+                    <div class="mt-2">
+                        <span class="badge bg-success me-1">dm me</span>
+                        <span class="badge bg-success me-1">send me</span>
+                        <span class="badge bg-info me-1">interested</span>
+                        <span class="badge bg-info me-1">info</span>
+                        <span class="badge bg-info me-1">details</span>
+                    </div>
+                    <small class="text-muted">
+                        <span class="badge bg-success">Green</span> = Direct DM (Consent)<br>
+                        <span class="badge bg-info">Blue</span> = Public Reply
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-rocket me-2"></i>ManyChat Strategy
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="small mb-2">
+                    <strong>🔔 Real-time Webhooks:</strong> 
+                    <span class="badge bg-success">Active</span>
+                </p>
+                <p class="small mb-2">
+                    <strong>📩 Direct DM Sending:</strong> 
+                    <span class="badge bg-success">Enabled</span>
+                </p>
+                <p class="small mb-2">
+                    <strong>🎯 Consent Detection:</strong> 
+                    <span class="badge bg-success">Active</span>
+                </p>
+                <p class="small mb-0">
+                    <strong>⚡ Response Time:</strong> 
+                    <span class="badge bg-primary">&lt; 2 seconds</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-terminal me-2"></i>Real-time Test Log
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="test-log" class="bg-dark text-light p-3 rounded" style="height: 300px; overflow-y: auto; font-family: monospace;">
+                    <div class="text-muted">Webhook test results will appear here...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('webhookTestForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const testData = {
+        comment_text: formData.get('comment_text'),
+        username: formData.get('username'),
+        user_id: formData.get('user_id')
+    };
+    
+    // Show loading state
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Testing...';
+    submitBtn.disabled = true;
+    
+    // Add to log
+    addToLog(`🔄 Testing webhook with comment: "${testData.comment_text}" from @${testData.username}`);
+    
+    try {
+        const response = await fetch('/webhook/test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(testData)
+        });
+        
+        const result = await response.json();
+        
+        // Show result
+        const resultDiv = document.getElementById('test-result');
+        const resultContent = document.getElementById('result-content');
+        const alertDiv = resultDiv.querySelector('.alert');
+        
+        if (result.success) {
+            alertDiv.className = 'alert alert-success';
+            resultContent.innerHTML = `
+                <div>✅ Webhook processed successfully!</div>
+                <div class="mt-2">
+                    <strong>Comment:</strong> "${result.comment_data.text}"<br>
+                    <strong>User:</strong> @${result.comment_data.from.username}<br>
+                    <strong>Action:</strong> ${result.action || 'Processed'}
+                </div>
+            `;
+            addToLog(`✅ Success: Webhook processed for @${testData.username}`);
+        } else {
+            alertDiv.className = 'alert alert-danger';
+            resultContent.innerHTML = `
+                <div>❌ Webhook test failed</div>
+                <div class="mt-2">${result.message || result.error || 'Unknown error'}</div>
+            `;
+            addToLog(`❌ Error: ${result.message || result.error || 'Unknown error'}`);
+        }
+        
+        resultDiv.style.display = 'block';
+        
+    } catch (error) {
+        const resultDiv = document.getElementById('test-result');
+        const resultContent = document.getElementById('result-content');
+        const alertDiv = resultDiv.querySelector('.alert');
+        
+        alertDiv.className = 'alert alert-danger';
+        resultContent.innerHTML = `
+            <div>❌ Network error</div>
+            <div class="mt-2">${error.message}</div>
+        `;
+        resultDiv.style.display = 'block';
+        
+        addToLog(`❌ Network Error: ${error.message}`);
+    } finally {
+        // Reset button
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+});
+
+function addToLog(message) {
+    const logDiv = document.getElementById('test-log');
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = `<div class="mb-1">[${timestamp}] ${message}</div>`;
+    
+    if (logDiv.innerHTML.includes('Webhook test results will appear here...')) {
+        logDiv.innerHTML = logEntry;
+    } else {
+        logDiv.innerHTML += logEntry;
+    }
+    
+    // Auto-scroll to bottom
+    logDiv.scrollTop = logDiv.scrollHeight;
+}
+
+// Quick test buttons
+document.addEventListener('DOMContentLoaded', function() {
+    // Add quick test examples
+    const quickTests = [
+        { text: 'dm me', label: 'Direct DM Test' },
+        { text: 'send me the link', label: 'Consent Test' },
+        { text: 'interested', label: 'Interest Test' },
+        { text: 'tell me more', label: 'Info Request' }
+    ];
+    
+    const form = document.getElementById('webhookTestForm');
+    const quickTestDiv = document.createElement('div');
+    quickTestDiv.className = 'mb-3';
+    quickTestDiv.innerHTML = '<label class="form-label">Quick Tests:</label><br>';
+    
+    quickTests.forEach(test => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-sm btn-outline-secondary me-2 mb-2';
+        btn.textContent = test.label;
+        btn.onclick = () => {
+            document.getElementById('comment_text').value = test.text;
+        };
+        quickTestDiv.appendChild(btn);
+    });
+    
+    form.insertBefore(quickTestDiv, form.querySelector('button[type="submit"]').parentNode);
+});
+</script>
+{% endblock %} 
