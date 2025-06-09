@@ -166,7 +166,7 @@ MAX_POST_AGE_DAYS = 7
 ## How It Works
 
 1. **Post Selection**: Bot checks which posts match your filtering criteria
-2. **Monitoring**: Scans comments on selected posts every 5 minutes
+2. **Monitoring**: Scans comments on selected posts every 30 seconds
 3. **Detection**: Identifies comments containing your keywords
 4. **Response**: Sends automated DM with your message and link
 5. **Tracking**: Records all activity to prevent duplicates

@@ -284,23 +284,57 @@ OPTION 2: Use backup code
                 logging.error("Unable to verify login status before sending DM")
                 return False
             
+            # Check if user follows us first (required for DMs in many cases)
+            try:
+                user_info = self.client.user_info(user_id)
+                if hasattr(user_info, 'is_private') and user_info.is_private:
+                    logging.warning(f"User @{username} has private account, DM may not be deliverable")
+                
+                # Check if the user follows us
+                friendship_status = self.client.user_friendship(user_id)
+                if not friendship_status.followed_by:
+                    logging.warning(f"User @{username} doesn't follow us, DM may be restricted")
+                    
+            except Exception as check_error:
+                logging.warning(f"Could not check user relationship for @{username}: {check_error}")
+            
             message = Config.DM_MESSAGE.format(link=Config.DEFAULT_LINK)
             
-            # Send the DM
-            self.client.direct_send(message, [user_id])
-            
-            # Log the sent DM
-            self.db.log_sent_dm(user_id, username, message)
-            
-            logging.info(f"DM sent to @{username} (keyword: {keyword})")
-            return True
+            # Try different DM methods based on message content
+            try:
+                # Method 1: Try regular text message first
+                if Config.DEFAULT_LINK not in message or not message.strip():
+                    # Pure text message
+                    self.client.direct_send(message, [user_id])
+                else:
+                    # Try sending as text with link (Instagram might handle links differently)
+                    # Split message to send text and link separately if needed
+                    self.client.direct_send(message, [user_id])
+                
+                # Log the sent DM
+                self.db.log_sent_dm(user_id, username, message)
+                
+                logging.info(f"✅ DM sent to @{username} (keyword: {keyword})")
+                return True
+                
+            except Exception as send_error:
+                error_msg = str(send_error).lower()
+                
+                if "403" in error_msg or "forbidden" in error_msg:
+                    logging.error(f"❌ DM blocked by Instagram to @{username} - User may have restricted DMs or doesn't follow you")
+                elif "400" in error_msg or "bad request" in error_msg:
+                    logging.error(f"❌ DM format error to @{username} - Message may contain restricted content")
+                elif "429" in error_msg or "rate" in error_msg:
+                    logging.error(f"❌ Rate limited while sending DM to @{username} - Too many DMs sent recently")
+                elif "login_required" in error_msg or "unauthorized" in error_msg:
+                    logging.warning(f"⚠️ Session expired while sending DM to @{username}, will retry next cycle")
+                else:
+                    logging.error(f"❌ Unexpected error sending DM to @{username}: {send_error}")
+                
+                return False
             
         except Exception as e:
-            error_msg = str(e).lower()
-            if "login_required" in error_msg or "unauthorized" in error_msg:
-                logging.warning(f"Session expired while sending DM to @{username}, will retry next cycle")
-            else:
-                logging.error(f"Error sending DM to @{username}: {e}")
+            logging.error(f"❌ Critical error in send_dm to @{username}: {e}")
             return False
     
     def process_post_comments(self, post):

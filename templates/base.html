@@ -107,6 +107,12 @@
                             </a>
                         </li>
                         <li class="nav-item mb-2">
+                            <a class="nav-link {% if request.endpoint == 'settings_page' %}active{% endif %}" href="{{ url_for('settings_page') }}">
+                                <i class="fas fa-sliders-h me-2"></i>
+                                General Settings
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
                             <a class="nav-link {% if request.endpoint == 'config_page' %}active{% endif %}" href="{{ url_for('config_page') }}">
                                 <i class="fas fa-cog me-2"></i>
                                 Configuration

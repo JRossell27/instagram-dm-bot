@@ -18,7 +18,7 @@ def debug_bot():
     print(f"Required Hashtags: {Config.REQUIRED_HASHTAGS}")
     print(f"Required Caption Words: {Config.REQUIRED_CAPTION_WORDS}")
     print(f"Max Post Age (days): {Config.MAX_POST_AGE_DAYS}")
-    print(f"Check Interval: {Config.CHECK_INTERVAL} minutes")
+    print(f"Check Interval: {Config.CHECK_INTERVAL} seconds")
     print(f"DM Message: {Config.DM_MESSAGE[:50]}...")
     print(f"Default Link: {Config.DEFAULT_LINK}")
     

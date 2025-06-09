@@ -10,6 +10,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from instagram_bot import InstagramBot
 from config import Config
 from database import Database
+import time
 
 # Configure logging
 logging.basicConfig(
@@ -100,13 +101,13 @@ def start_scheduler():
         scheduler.add_job(
             func=run_bot_cycle,
             trigger="interval",
-            minutes=Config.CHECK_INTERVAL,
+            seconds=Config.CHECK_INTERVAL,
             id='bot_cycle'
         )
         scheduler.start()
         bot_status['running'] = True
-        bot_status['next_run'] = datetime.now() + timedelta(minutes=Config.CHECK_INTERVAL)
-        logging.info(f"Scheduler started - running every {Config.CHECK_INTERVAL} minutes")
+        bot_status['next_run'] = datetime.now() + timedelta(seconds=Config.CHECK_INTERVAL)
+        logging.info(f"Scheduler started - running every {Config.CHECK_INTERVAL} seconds")
         
     except Exception as e:
         bot_status['error_message'] = f"Scheduler error: {str(e)}"
@@ -479,15 +480,74 @@ def debug_page():
         logging.error(f"Debug page error: {e}")
         return f"Debug error: {e}", 500
 
+@app.route('/update_settings', methods=['POST'])
+def update_settings():
+    """Update general settings like check interval"""
+    try:
+        # Update check interval
+        check_interval = int(request.form.get('check_interval', Config.CHECK_INTERVAL))
+        if check_interval != Config.CHECK_INTERVAL:
+            old_interval = Config.CHECK_INTERVAL
+            Config.CHECK_INTERVAL = check_interval
+            
+            # Restart scheduler with new interval if bot is running
+            if bot_status['running']:
+                stop_scheduler()
+                time.sleep(1)  # Small delay
+                start_scheduler()
+                flash(f'Check interval updated from {old_interval}s to {check_interval}s and scheduler restarted', 'success')
+            else:
+                flash(f'Check interval updated from {old_interval}s to {check_interval}s', 'success')
+        
+        # Update other settings if provided
+        if 'max_posts_to_check' in request.form:
+            Config.MAX_POSTS_TO_CHECK = int(request.form.get('max_posts_to_check', Config.MAX_POSTS_TO_CHECK))
+        
+        # Save all settings
+        Config.save_runtime_config()
+        
+        return redirect(request.referrer or url_for('dashboard'))
+        
+    except Exception as e:
+        logging.error(f"Error updating settings: {e}")
+        flash(f"Error updating settings: {e}", 'error')
+        return redirect(request.referrer or url_for('dashboard'))
+
+@app.route('/settings')
+def settings_page():
+    """General settings page"""
+    try:
+        settings_data = {
+            'check_interval': Config.CHECK_INTERVAL,
+            'max_posts_to_check': Config.MAX_POSTS_TO_CHECK,
+            'dm_message': Config.DM_MESSAGE,
+            'default_link': Config.DEFAULT_LINK,
+        }
+        
+        return render_template('settings.html', settings=settings_data, bot_status=bot_status)
+        
+    except Exception as e:
+        logging.error(f"Settings page error: {e}")
+        flash(f'Error loading settings: {str(e)}', 'error')
+        return render_template('settings.html', settings={}, bot_status=bot_status)
+
 if __name__ == '__main__':
     # Load runtime configuration on startup
+    print("🔧 Loading runtime configuration...")
     Config.load_runtime_config()
     
     # Initialize on startup
+    print("🤖 Initializing Instagram bot...")
     init_bot()
     
     # Check if running in production
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') == 'development'
+    
+    print(f"🚀 Starting web application on port {port}")
+    print(f"📍 Debug mode: {debug}")
+    print(f"⏱️  Check interval: {Config.CHECK_INTERVAL} seconds")
+    print(f"📊 Max posts to check: {Config.MAX_POSTS_TO_CHECK}")
+    print(f"🔗 Default link: {Config.DEFAULT_LINK}")
     
     app.run(host='0.0.0.0', port=port, debug=debug) 

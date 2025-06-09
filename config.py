@@ -31,8 +31,8 @@ Let me know if you have any questions!"""
     # Database file
     DATABASE_FILE = "instagram_bot.db"
     
-    # Check interval in minutes
-    CHECK_INTERVAL = 5
+    # Check interval in seconds
+    CHECK_INTERVAL = 30
     
     # Maximum posts to check per run
     MAX_POSTS_TO_CHECK = 5
@@ -83,9 +83,14 @@ Let me know if you have any questions!"""
                 for key, value in runtime_config.items():
                     if hasattr(cls, key):
                         setattr(cls, key, value)
+                        print(f"✅ Loaded {key}: {value}")
+                
+                print(f"✅ Configuration loaded from {cls.RUNTIME_CONFIG_FILE}")
                         
             except Exception as e:
-                print(f"Error loading runtime config: {e}")
+                print(f"❌ Error loading runtime config: {e}")
+        else:
+            print(f"ℹ️  No runtime config file found, using defaults")
     
     @classmethod
     def save_runtime_config(cls):
@@ -100,13 +105,16 @@ Let me know if you have any questions!"""
             'ONLY_POSTS_WITH_LINKS': cls.ONLY_POSTS_WITH_LINKS,
             'DM_MESSAGE': cls.DM_MESSAGE,
             'DEFAULT_LINK': cls.DEFAULT_LINK,
+            'CHECK_INTERVAL': cls.CHECK_INTERVAL,
+            'MAX_POSTS_TO_CHECK': cls.MAX_POSTS_TO_CHECK,
         }
         
         try:
             with open(cls.RUNTIME_CONFIG_FILE, 'w') as f:
                 json.dump(runtime_config, f, indent=2)
+            print(f"✅ Configuration saved to {cls.RUNTIME_CONFIG_FILE}")
         except Exception as e:
-            print(f"Error saving runtime config: {e}")
+            print(f"❌ Error saving runtime config: {e}")
 
 # Load runtime configuration on import
 Config.load_runtime_config() 

@@ -19,7 +19,7 @@ def main():
         return
     
     print(f"Bot is now monitoring for keywords: {', '.join(Config.KEYWORDS)}")
-    print(f"Checking every {Config.CHECK_INTERVAL} minutes")
+    print(f"Checking every {Config.CHECK_INTERVAL} seconds")
     
     # Show filtering status
     if Config.MONITOR_ALL_POSTS:
@@ -49,7 +49,7 @@ def main():
     print("="*50)
     
     # Schedule the monitoring
-    schedule.every(Config.CHECK_INTERVAL).minutes.do(bot.run_monitoring_cycle)
+    schedule.every(Config.CHECK_INTERVAL).seconds.do(bot.run_monitoring_cycle)
     
     # Run initial cycle
     bot.run_monitoring_cycle()
@@ -87,7 +87,7 @@ def show_stats():
         print(f"Account: @{stats['username']}")
     
     print(f"\nMonitored Keywords: {', '.join(Config.KEYWORDS)}")
-    print(f"Check Interval: {Config.CHECK_INTERVAL} minutes")
+    print(f"Check Interval: {Config.CHECK_INTERVAL} seconds")
     
     # Show filtering configuration
     print(f"\nPost Filtering:")

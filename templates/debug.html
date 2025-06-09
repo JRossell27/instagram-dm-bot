@@ -168,6 +168,98 @@
                 </div>
             </div>
         </div>
+        
+        <!-- DM Troubleshooting -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-envelope me-2"></i>DM Troubleshooting Guide
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6 class="text-primary">Common DM Issues & Solutions</h6>
+                
+                <div class="accordion" id="dmTroubleshooting">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#error403">
+                                ❌ Error 403: DM Blocked/Forbidden
+                            </button>
+                        </h2>
+                        <div id="error403" class="accordion-collapse collapse" data-bs-parent="#dmTroubleshooting">
+                            <div class="accordion-body">
+                                <strong>Most common cause:</strong> The user doesn't follow your account.
+                                <ul>
+                                    <li>Instagram restricts DMs to non-followers</li>
+                                    <li>User may have DM restrictions enabled</li>
+                                    <li>Your account may be flagged for automation</li>
+                                    <li><strong>Solution:</strong> Ask users to follow you before commenting</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#error400">
+                                ⚠️ Error 400: Bad Request
+                            </button>
+                        </h2>
+                        <div id="error400" class="accordion-collapse collapse" data-bs-parent="#dmTroubleshooting">
+                            <div class="accordion-body">
+                                <strong>Message content issues:</strong>
+                                <ul>
+                                    <li>Links may be blocked as spam</li>
+                                    <li>Message too long (limit ~1000 characters)</li>
+                                    <li>Contains restricted words/phrases</li>
+                                    <li><strong>Solution:</strong> Simplify message, avoid direct links</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#rateLimit">
+                                ⏱️ Rate Limiting
+                            </button>
+                        </h2>
+                        <div id="rateLimit" class="accordion-collapse collapse" data-bs-parent="#dmTroubleshooting">
+                            <div class="accordion-body">
+                                <strong>Too many DMs sent:</strong>
+                                <ul>
+                                    <li>Instagram limits DMs per hour/day</li>
+                                    <li>New accounts have stricter limits</li>
+                                    <li>Automation can trigger restrictions</li>
+                                    <li><strong>Solution:</strong> Increase check intervals, send fewer DMs</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#bestPractices">
+                                ✅ Best Practices
+                            </button>
+                        </h2>
+                        <div id="bestPractices" class="accordion-collapse collapse" data-bs-parent="#dmTroubleshooting">
+                            <div class="accordion-body">
+                                <strong>To improve DM success rate:</strong>
+                                <ul>
+                                    <li>Encourage users to follow you first</li>
+                                    <li>Keep messages short and natural</li>
+                                    <li>Use longer check intervals (60+ seconds)</li>
+                                    <li>Avoid obvious automation patterns</li>
+                                    <li>Test with your own accounts first</li>
+                                    <li>Consider commenting back instead of DMing</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %} 
