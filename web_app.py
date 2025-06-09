@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Instagram DM Bot - Webhook-Optimized Architecture
+# Deployment trigger: 2025-06-09 - Force redeploy with all navigation fixes
 import os
 import json
 import logging
