@@ -45,17 +45,9 @@ class InstagramBot:
             
             # Fresh login attempt with 2FA support
             try:
-                # Check if we have a 2FA verification code in environment variables
-                verification_code = os.getenv('INSTAGRAM_2FA_CODE', '').replace(' ', '')
-                
-                if verification_code:
-                    logging.info("Using provided 2FA verification code")
-                    self.client.login(self.username, self.password, verification_code=verification_code)
-                else:
-                    # Try login without 2FA first
-                    self.client.login(self.username, self.password)
-                    
-                logging.info("Successfully logged in to Instagram")
+                # First try login without 2FA
+                self.client.login(self.username, self.password)
+                logging.info("Successfully logged in to Instagram without 2FA")
                 self.logged_in = True
                 
                 # Save session for future use
@@ -67,14 +59,93 @@ class InstagramBot:
             except Exception as login_error:
                 error_msg = str(login_error).lower()
                 
-                # Check for specific error types
-                if "two_factor_required" in error_msg or "2fa" in error_msg or "verification_code" in error_msg:
-                    if not os.getenv('INSTAGRAM_2FA_CODE'):
-                        logging.error("2FA required but no verification code provided")
+                # Check if 2FA is required
+                if "two_factor_required" in error_msg or "two-factor authentication required" in error_msg:
+                    logging.info("2FA required, attempting backup code authentication...")
+                    
+                    # Get backup code from environment
+                    backup_code = os.getenv('INSTAGRAM_2FA_CODE', '').replace(' ', '')
+                    
+                    if not backup_code:
+                        logging.error("2FA required but no backup code provided")
                         raise Exception("Instagram 2FA required. Please add INSTAGRAM_2FA_CODE environment variable with your backup code (without spaces).")
-                    else:
-                        logging.error("2FA code may be invalid or expired")
-                        raise Exception("Instagram 2FA code invalid or expired. Please update INSTAGRAM_2FA_CODE with a fresh backup code.")
+                    
+                    try:
+                        # Use the two_factor_login method for backup codes
+                        # This is different from the verification_code parameter
+                        from instagrapi.exceptions import TwoFactorRequired
+                        
+                        # The TwoFactorRequired exception should contain the two_factor_identifier
+                        # We need to handle this properly
+                        
+                        # Try using the backup code as a regular verification code first
+                        try:
+                            self.client.login(self.username, self.password, verification_code=backup_code)
+                            logging.info("Successfully logged in using backup code as verification code")
+                        except Exception as backup_error:
+                            logging.info(f"Backup code as verification failed: {backup_error}")
+                            
+                            # If that fails, try the two_factor_login endpoint directly
+                            # This requires manual handling of the 2FA flow
+                            logging.info("Attempting manual 2FA login with backup code...")
+                            
+                            # Perform initial login to get 2FA challenge
+                            try:
+                                self.client.login(self.username, self.password)
+                            except TwoFactorRequired as tfa_error:
+                                # Extract two_factor_identifier from the exception
+                                two_factor_info = tfa_error.response.json()
+                                two_factor_identifier = two_factor_info.get('two_factor_info', {}).get('two_factor_identifier')
+                                
+                                if two_factor_identifier:
+                                    logging.info("Got 2FA identifier, submitting backup code...")
+                                    
+                                    # Submit backup code using the two_factor_login endpoint
+                                    login_data = {
+                                        'verification_code': backup_code,
+                                        'two_factor_identifier': two_factor_identifier,
+                                        'username': self.username,
+                                        'trust_this_device': '1'
+                                    }
+                                    
+                                    response = self.client.private_request('accounts/two_factor_login/', login_data, login=True)
+                                    
+                                    if response.get('logged_in_user'):
+                                        logging.info("Successfully logged in using backup code via two_factor_login")
+                                        self.logged_in = True
+                                        
+                                        # Save session for future use
+                                        self.client.dump_settings(session_file)
+                                        logging.info("Session saved for future logins")
+                                        
+                                        return True
+                                    else:
+                                        raise Exception("Backup code authentication failed")
+                                else:
+                                    raise Exception("Could not get 2FA identifier from Instagram")
+                            except Exception as manual_error:
+                                logging.error(f"Manual 2FA login failed: {manual_error}")
+                                raise Exception(f"Backup code authentication failed: {manual_error}")
+                        
+                        self.logged_in = True
+                        
+                        # Save session for future use
+                        self.client.dump_settings(session_file)
+                        logging.info("Session saved for future logins")
+                        
+                        return True
+                        
+                    except Exception as backup_error:
+                        logging.error(f"Backup code authentication failed: {backup_error}")
+                        backup_error_msg = str(backup_error).lower()
+                        
+                        if "security code" in backup_error_msg or "check the security code" in backup_error_msg:
+                            raise Exception("Instagram backup code is invalid or expired. Please generate a new backup code from Instagram settings and update INSTAGRAM_2FA_CODE.")
+                        elif "invalid" in backup_error_msg:
+                            raise Exception("Instagram backup code is invalid. Please check the code and try again.")
+                        else:
+                            raise Exception(f"Instagram backup code authentication failed: {backup_error}")
+                            
                 elif "challenge_required" in error_msg:
                     logging.error("Instagram challenge required - account may be flagged")
                     raise Exception("Instagram requires verification. Try logging in manually first.")
