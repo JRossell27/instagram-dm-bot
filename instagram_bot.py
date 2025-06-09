@@ -36,6 +36,14 @@ class InstagramBusinessBot:
             "Love the interest! DM us '{keyword}' for exclusive access 🚀"
         ]
         
+        # NEW: Direct DM messages for qualified users (ManyChat strategy)
+        self.direct_dm_messages = [
+            "Hi {username}! I saw your comment '{comment}' - here's the info you requested: {link} 🚀",
+            "Hey {username}! Thanks for your interest! Here's what you're looking for: {link} ✨", 
+            "Hi there! I noticed you commented '{comment}' - sending you the details now: {link} 📩",
+            "Hello {username}! Here's the link you asked about: {link} Hope this helps! 🙌"
+        ]
+        
     def login(self):
         """Verify Instagram Business API authentication"""
         try:
@@ -205,10 +213,51 @@ class InstagramBusinessBot:
     def check_comment_for_keywords(self, comment_text):
         """Check if comment contains any of our keywords"""
         comment_lower = comment_text.lower()
+        
+        # First check for explicit consent keywords (strongest signal)
+        for keyword in Config.CONSENT_KEYWORDS:
+            if keyword.lower() in comment_lower:
+                return keyword
+        
+        # Then check for direct DM keywords
+        for keyword in Config.DIRECT_DM_KEYWORDS:
+            if keyword.lower() in comment_lower:
+                return keyword
+                
+        # Finally check original keywords for backward compatibility
         for keyword in Config.KEYWORDS:
             if keyword.lower() in comment_lower:
                 return keyword
+                
         return None
+    
+    def has_consent_to_dm(self, comment_text):
+        """Check if comment indicates explicit consent to receive DMs (ManyChat approach)"""
+        comment_lower = comment_text.lower()
+        
+        # Check for explicit consent keywords
+        for keyword in Config.CONSENT_KEYWORDS:
+            if keyword.lower() in comment_lower:
+                return True
+        
+        # Check for question-based consent patterns
+        consent_patterns = [
+            'dm me',
+            'send me',
+            'message me',
+            'can you send',
+            'please send',
+            'i want',
+            'need the link',
+            'send link',
+            'share the link'
+        ]
+        
+        for pattern in consent_patterns:
+            if pattern in comment_lower:
+                return True
+                
+        return False
     
     def reply_to_comment(self, comment_id, message):
         """Reply to a comment publicly"""
@@ -409,6 +458,160 @@ class InstagramBusinessBot:
         except Exception as e:
             logging.error(f"Error getting stats: {e}")
             return {'error': str(e)}
+
+    def send_direct_message(self, user_id, message):
+        """Send direct message to user (Instagram Messaging API)"""
+        try:
+            # Using Instagram Messaging API endpoint
+            url = f"https://graph.instagram.com/v21.0/me/messages"
+            
+            data = {
+                'recipient': {'id': user_id},
+                'message': {'text': message},
+                'access_token': self.access_token
+            }
+            
+            response = requests.post(url, json=data)
+            
+            if response.status_code == 200:
+                logging.info(f"✅ Direct message sent successfully to user {user_id}")
+                return True
+            else:
+                # Log detailed error for debugging
+                error_data = response.json() if response.text else {}
+                logging.error(f"Failed to send DM to {user_id}: {response.status_code} - {error_data}")
+                return False
+                
+        except Exception as e:
+            logging.error(f"Error sending direct message to {user_id}: {e}")
+            return False
+    
+    def process_comment_webhook(self, comment_data):
+        """Process comment from webhook notification (ManyChat approach)"""
+        try:
+            comment_id = comment_data.get('id')
+            comment_text = comment_data.get('text', '')
+            comment_author = comment_data.get('from', {})
+            author_id = comment_author.get('id')
+            author_username = comment_author.get('username', 'user')
+            
+            logging.info(f"🔔 Webhook: New comment from @{author_username}: {comment_text[:50]}...")
+            
+            # Check if already processed
+            if self.db.is_comment_processed(comment_id):
+                logging.info(f"Comment {comment_id} already processed, skipping")
+                return False
+            
+            # Check for keywords
+            matched_keyword = self.check_comment_for_keywords(comment_text)
+            
+            if matched_keyword:
+                logging.info(f"🎯 KEYWORD MATCH: '{matched_keyword}' from @{author_username}")
+                
+                # ManyChat Strategy: Send DIRECT DM (treating comment as consent)
+                if Config.ENABLE_DIRECT_DM and author_id:
+                    # Check for explicit consent before sending direct DM
+                    has_consent = self.has_consent_to_dm(comment_text)
+                    
+                    if has_consent:
+                        dm_message = self.get_direct_dm_message(author_username, comment_text, matched_keyword)
+                        
+                        if self.send_direct_message(author_id, dm_message):
+                            # Log successful DM
+                            self.db.add_processed_comment(
+                                comment_id=comment_id,
+                                post_id=comment_data.get('media', {}).get('id', ''),
+                                username=author_username,
+                                user_id=author_id,
+                                comment_text=comment_text,
+                                keyword=matched_keyword,
+                                action_taken='direct_dm_sent_with_consent'
+                            )
+                            
+                            # Also log to DM table
+                            self.db.log_sent_dm(author_id, author_username, dm_message)
+                            
+                            logging.info(f"✅ DIRECT DM sent to @{author_username} with consent for keyword '{matched_keyword}'")
+                            return True
+                        else:
+                            logging.warning(f"❌ Failed to send direct DM to @{author_username}")
+                    else:
+                        logging.info(f"⚠️ Keyword matched but no explicit consent from @{author_username}")
+                
+                # Fallback: Reply encouraging DM (original strategy)
+                reply_message = self.get_dm_encouragement_message(matched_keyword)
+                
+                if self.reply_to_comment(comment_id, reply_message):
+                    self.db.add_processed_comment(
+                        comment_id=comment_id,
+                        post_id=comment_data.get('media', {}).get('id', ''),
+                        username=author_username,
+                        user_id=author_id,
+                        comment_text=comment_text,
+                        keyword=matched_keyword,
+                        action_taken='replied_encouraging_dm'
+                    )
+                    logging.info(f"✅ Comment reply sent to @{author_username}")
+                    return True
+            else:
+                # Mark as processed but no action
+                self.db.add_processed_comment(
+                    comment_id=comment_id,
+                    post_id=comment_data.get('media', {}).get('id', ''),
+                    username=author_username,
+                    user_id=author_id,
+                    comment_text=comment_text,
+                    keyword=None,
+                    action_taken='no_keyword_match'
+                )
+                
+            return False
+            
+        except Exception as e:
+            logging.error(f"Error processing webhook comment: {e}")
+            return False
+    
+    def get_direct_dm_message(self, username, comment_text, keyword):
+        """Generate direct DM message using ManyChat approach"""
+        template = random.choice(self.direct_dm_messages)
+        
+        message = template.format(
+            username=username,
+            comment=comment_text[:30] + "..." if len(comment_text) > 30 else comment_text,
+            keyword=keyword.upper(),
+            link=Config.DEFAULT_LINK
+        )
+        
+        return message
+    
+    def setup_webhooks(self):
+        """Setup Instagram webhooks for real-time notifications"""
+        try:
+            # This would typically be done through Meta Developer Console
+            # But we can verify webhook subscription programmatically
+            
+            webhook_url = f"{Config.WEBHOOK_BASE_URL}/webhook/instagram"
+            
+            # Subscribe to comment events
+            subscription_url = f"https://graph.instagram.com/v21.0/{self.user_id}/subscribed_apps"
+            
+            data = {
+                'subscribed_fields': 'comments',
+                'access_token': self.access_token
+            }
+            
+            response = requests.post(subscription_url, data=data)
+            
+            if response.status_code == 200:
+                logging.info("✅ Webhook subscription configured successfully")
+                return True
+            else:
+                logging.error(f"Webhook subscription failed: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            logging.error(f"Error setting up webhooks: {e}")
+            return False
 
 # For backward compatibility, create an alias
 InstagramBot = InstagramBusinessBot 

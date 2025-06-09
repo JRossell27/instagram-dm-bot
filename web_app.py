@@ -764,6 +764,85 @@ def update_instagram_login():
         flash(f"Error updating login: {e}", 'error')
         return redirect('/instagram_login')
 
+@app.route('/webhook/instagram', methods=['GET', 'POST'])
+def instagram_webhook():
+    """Handle Instagram webhook notifications (ManyChat approach)"""
+    if request.method == 'GET':
+        # Webhook verification
+        verify_token = request.args.get('hub.verify_token')
+        challenge = request.args.get('hub.challenge')
+        
+        if verify_token == Config.WEBHOOK_VERIFY_TOKEN:
+            logging.info("✅ Instagram webhook verified successfully")
+            return challenge
+        else:
+            logging.error("❌ Instagram webhook verification failed")
+            return 'Forbidden', 403
+    
+    elif request.method == 'POST':
+        # Process webhook notification
+        try:
+            data = request.get_json()
+            logging.info(f"🔔 Instagram webhook received: {data}")
+            
+            # Process each entry in the webhook data
+            for entry in data.get('entry', []):
+                # Process comment changes
+                for changes in entry.get('changes', []):
+                    if changes.get('field') == 'comments':
+                        comment_data = changes.get('value', {})
+                        
+                        # Only process new comments (not deleted)
+                        if comment_data.get('verb') == 'add':
+                            global bot
+                            if bot and bot.logged_in:
+                                # Process comment using ManyChat strategy
+                                bot.process_comment_webhook(comment_data)
+                            else:
+                                logging.warning("Bot not initialized or not logged in")
+            
+            return 'OK', 200
+            
+        except Exception as e:
+            logging.error(f"Error processing Instagram webhook: {e}")
+            return 'Error', 500
+
+@app.route('/webhook/test', methods=['POST'])
+def test_webhook():
+    """Test webhook functionality with sample data"""
+    try:
+        # Sample comment data for testing
+        test_comment_data = {
+            'id': 'test_comment_123',
+            'text': request.json.get('comment_text', 'I want the link please!'),
+            'from': {
+                'id': request.json.get('user_id', '123456789'),
+                'username': request.json.get('username', 'testuser')
+            },
+            'media': {
+                'id': 'test_post_456'
+            },
+            'verb': 'add'
+        }
+        
+        global bot
+        if bot and bot.logged_in:
+            result = bot.process_comment_webhook(test_comment_data)
+            return jsonify({
+                'success': result,
+                'message': 'Test webhook processed',
+                'comment_data': test_comment_data
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Bot not initialized or not logged in'
+            }), 400
+            
+    except Exception as e:
+        logging.error(f"Error in test webhook: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 if __name__ == '__main__':
     # Load runtime configuration on startup
     print("🔧 Loading runtime configuration...")

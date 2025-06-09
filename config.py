@@ -83,6 +83,49 @@ Feel free to ask if you have any questions! 🙂"""
     # OAuth state for security
     OAUTH_STATE_SECRET = os.getenv('OAUTH_STATE_SECRET', '')
     
+    # NEW: ManyChat-style Direct DM Configuration
+    ENABLE_DIRECT_DM = True  # Enable direct DM sending (like ManyChat)
+    
+    # Webhook configuration for real-time notifications
+    WEBHOOK_BASE_URL = os.getenv('WEBHOOK_BASE_URL', 'https://instagram-dm-bot-tk4d.onrender.com')
+    WEBHOOK_VERIFY_TOKEN = os.getenv('WEBHOOK_VERIFY_TOKEN', 'your_verify_token_here')
+    
+    # Enhanced keywords for direct DM (more specific triggers)
+    DIRECT_DM_KEYWORDS = [
+        'link',
+        'dm me',
+        'send me', 
+        'info',
+        'details',
+        'interested',
+        'want to know',
+        'tell me more',
+        'how much',
+        'price',
+        'cost',
+        'buy',
+        'purchase',
+        'get started',
+        'sign up',
+        'join',
+        'access'
+    ]
+    
+    # Consent-based keywords (explicit permission to DM)
+    CONSENT_KEYWORDS = [
+        'dm me',
+        'send me',
+        'message me',
+        'dm',
+        'send info',
+        'send link',
+        'send details'
+    ]
+    
+    # User eligibility for direct DM (follower requirements)
+    REQUIRE_FOLLOWER_FOR_DM = False  # Set to True to only DM followers
+    MIN_FOLLOWER_COUNT_FOR_DM = 0    # Minimum follower count to send DM
+    
     @classmethod
     def load_runtime_config(cls):
         """Load configuration from runtime_config.json if it exists"""
@@ -138,7 +181,14 @@ Feel free to ask if you have any questions! 🙂"""
                 'INSTAGRAM_APP_SECRET': cls.INSTAGRAM_APP_SECRET,
                 'INSTAGRAM_ACCESS_TOKEN': cls.INSTAGRAM_ACCESS_TOKEN,
                 'INSTAGRAM_USER_ID': cls.INSTAGRAM_USER_ID,
-                'OAUTH_STATE_SECRET': cls.OAUTH_STATE_SECRET
+                'OAUTH_STATE_SECRET': cls.OAUTH_STATE_SECRET,
+                'ENABLE_DIRECT_DM': cls.ENABLE_DIRECT_DM,
+                'WEBHOOK_BASE_URL': cls.WEBHOOK_BASE_URL,
+                'WEBHOOK_VERIFY_TOKEN': cls.WEBHOOK_VERIFY_TOKEN,
+                'DIRECT_DM_KEYWORDS': cls.DIRECT_DM_KEYWORDS,
+                'CONSENT_KEYWORDS': cls.CONSENT_KEYWORDS,
+                'REQUIRE_FOLLOWER_FOR_DM': cls.REQUIRE_FOLLOWER_FOR_DM,
+                'MIN_FOLLOWER_COUNT_FOR_DM': cls.MIN_FOLLOWER_COUNT_FOR_DM
             }
             
             with open('runtime_config.json', 'w') as f:

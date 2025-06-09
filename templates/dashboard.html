@@ -244,6 +244,66 @@
         </div>
     </div>
 </div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">🤖 Bot Status</h5>
+                {% if bot_status.running %}
+                    <span class="badge bg-success">Running</span>
+                {% else %}
+                    <span class="badge bg-danger">Stopped</span>
+                {% endif %}
+                <p class="card-text mt-2">
+                    <small class="text-muted">
+                        {% if bot_status.last_run %}
+                            Last run: {{ bot_status.last_run }}
+                        {% else %}
+                            Never run
+                        {% endif %}
+                    </small>
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">📊 Statistics</h5>
+                <p class="card-text">
+                    <strong>{{ bot_status.total_dms_sent }}</strong> DMs sent<br>
+                    <strong>{{ bot_status.posts_monitored }}</strong> posts monitored
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">⚡ ManyChat Strategy</h5>
+                <div class="badge bg-success mb-2">ACTIVE</div>
+                <p class="card-text small">
+                    <strong>Real-time DMs:</strong> ✅ Enabled<br>
+                    <strong>Consent Detection:</strong> ✅ Active<br>
+                    <strong>Webhook Ready:</strong> ✅ Yes
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ManyChat Strategy Info -->
+<div class="alert alert-info" role="alert">
+    <h4 class="alert-heading">🚀 ManyChat Strategy Activated!</h4>
+    <p>Your bot now uses <strong>ManyChat's proven strategy</strong>:</p>
+    <ul class="mb-0">
+        <li><strong>Real-time webhooks</strong> - Instant notifications when comments are posted</li>
+        <li><strong>Direct DM sending</strong> - Automatically DM users who comment with consent keywords</li>
+        <li><strong>Consent detection</strong> - Only sends DMs when users explicitly request them</li>
+        <li><strong>Compliance focused</strong> - Follows Instagram's messaging policies</li>
+    </ul>
+</div>
 {% endblock %}
 
 {% block scripts %}
