@@ -74,105 +74,55 @@ Let me know if you have any questions!"""
     
     @classmethod
     def load_runtime_config(cls):
-        """Load runtime configuration changes from JSON file"""
-        if os.path.exists(cls.RUNTIME_CONFIG_FILE):
-            try:
-                with open(cls.RUNTIME_CONFIG_FILE, 'r') as f:
+        """Load configuration from runtime_config.json if it exists"""
+        try:
+            if os.path.exists('runtime_config.json'):
+                with open('runtime_config.json', 'r') as f:
                     config_data = json.load(f)
                 
-                if config_data:
-                    print(f"📥 Loading runtime configuration...")
-                    
-                    # Load Instagram session ID
-                    if 'INSTAGRAM_SESSION_ID' in config_data:
-                        cls.INSTAGRAM_SESSION_ID = config_data['INSTAGRAM_SESSION_ID']
-                        if cls.INSTAGRAM_SESSION_ID:
-                            print(f"   ✅ Session ID loaded: {cls.INSTAGRAM_SESSION_ID[:20]}...")
-                        else:
-                            print(f"   ⚠️  No session ID configured")
-                    
-                    # Load keywords
-                    if 'KEYWORDS' in config_data:
-                        cls.KEYWORDS = config_data['KEYWORDS']
-                        print(f"   ✅ Keywords: {cls.KEYWORDS}")
-                    
-                    # Load monitoring settings
-                    if 'MONITOR_ALL_POSTS' in config_data:
-                        cls.MONITOR_ALL_POSTS = config_data['MONITOR_ALL_POSTS']
-                        print(f"   ✅ Monitor all posts: {cls.MONITOR_ALL_POSTS}")
-                    
-                    if 'SPECIFIC_POST_IDS' in config_data:
-                        cls.SPECIFIC_POST_IDS = config_data['SPECIFIC_POST_IDS']
-                        print(f"   ✅ Specific post IDs: {cls.SPECIFIC_POST_IDS}")
-                    
-                    # Load filtering criteria
-                    if 'REQUIRED_HASHTAGS' in config_data:
-                        cls.REQUIRED_HASHTAGS = config_data['REQUIRED_HASHTAGS']
-                        print(f"   ✅ Required hashtags: {cls.REQUIRED_HASHTAGS}")
-                    
-                    if 'REQUIRED_CAPTION_WORDS' in config_data:
-                        cls.REQUIRED_CAPTION_WORDS = config_data['REQUIRED_CAPTION_WORDS']
-                        print(f"   ✅ Required caption words: {cls.REQUIRED_CAPTION_WORDS}")
-                    
-                    if 'MAX_POST_AGE_DAYS' in config_data:
-                        cls.MAX_POST_AGE_DAYS = config_data['MAX_POST_AGE_DAYS']
-                        print(f"   ✅ Max post age: {cls.MAX_POST_AGE_DAYS} days")
-                    
-                    if 'ONLY_POSTS_WITH_LINKS' in config_data:
-                        cls.ONLY_POSTS_WITH_LINKS = config_data['ONLY_POSTS_WITH_LINKS']
-                        print(f"   ✅ Only posts with links: {cls.ONLY_POSTS_WITH_LINKS}")
-                    
-                    # Load DM settings
-                    if 'DM_MESSAGE' in config_data:
-                        cls.DM_MESSAGE = config_data['DM_MESSAGE']
-                        print(f"   ✅ DM message template loaded")
-                    
-                    if 'DEFAULT_LINK' in config_data:
-                        cls.DEFAULT_LINK = config_data['DEFAULT_LINK']
-                        print(f"   ✅ Default link: {cls.DEFAULT_LINK}")
-                    
-                    # Load system settings
-                    if 'CHECK_INTERVAL' in config_data:
-                        cls.CHECK_INTERVAL = config_data['CHECK_INTERVAL']
-                        print(f"   ✅ Check interval: {cls.CHECK_INTERVAL} seconds")
-                    
-                    if 'MAX_POSTS_TO_CHECK' in config_data:
-                        cls.MAX_POSTS_TO_CHECK = config_data['MAX_POSTS_TO_CHECK']
-                        print(f"   ✅ Max posts to check: {cls.MAX_POSTS_TO_CHECK}")
-                    
-                    print(f"📥 Runtime configuration loaded successfully!")
-                else:
-                    print(f"ℹ️  No runtime configuration found - using defaults")
+                # Update class attributes with loaded values
+                for key, value in config_data.items():
+                    if hasattr(cls, key):
+                        setattr(cls, key, value)
                 
-            except Exception as e:
-                print(f"❌ Error loading runtime config: {e}")
-        else:
-            print(f"ℹ️  No runtime config file found, using defaults")
-    
+                print("✅ Runtime configuration loaded successfully")
+                return True
+            else:
+                print("ℹ️ No runtime configuration file found - using defaults")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Error loading runtime configuration: {e}")
+            return False
+
     @classmethod
     def save_runtime_config(cls):
-        """Save current configuration to JSON file for persistence"""
-        runtime_config = {
-            'INSTAGRAM_SESSION_ID': cls.INSTAGRAM_SESSION_ID,
-            'KEYWORDS': cls.KEYWORDS,
-            'MONITOR_ALL_POSTS': cls.MONITOR_ALL_POSTS,
-            'SPECIFIC_POST_IDS': cls.SPECIFIC_POST_IDS,
-            'REQUIRED_HASHTAGS': cls.REQUIRED_HASHTAGS,
-            'REQUIRED_CAPTION_WORDS': cls.REQUIRED_CAPTION_WORDS,
-            'MAX_POST_AGE_DAYS': cls.MAX_POST_AGE_DAYS,
-            'ONLY_POSTS_WITH_LINKS': cls.ONLY_POSTS_WITH_LINKS,
-            'DM_MESSAGE': cls.DM_MESSAGE,
-            'DEFAULT_LINK': cls.DEFAULT_LINK,
-            'CHECK_INTERVAL': cls.CHECK_INTERVAL,
-            'MAX_POSTS_TO_CHECK': cls.MAX_POSTS_TO_CHECK,
-        }
-        
+        """Save current configuration to runtime_config.json"""
         try:
-            with open(cls.RUNTIME_CONFIG_FILE, 'w') as f:
-                json.dump(runtime_config, f, indent=2)
-            print(f"✅ Configuration saved to {cls.RUNTIME_CONFIG_FILE}")
+            config_data = {
+                'KEYWORDS': cls.KEYWORDS,
+                'MONITOR_ALL_POSTS': cls.MONITOR_ALL_POSTS,
+                'SPECIFIC_POST_IDS': cls.SPECIFIC_POST_IDS,
+                'REQUIRED_HASHTAGS': cls.REQUIRED_HASHTAGS,
+                'REQUIRED_CAPTION_WORDS': cls.REQUIRED_CAPTION_WORDS,
+                'MAX_POST_AGE_DAYS': cls.MAX_POST_AGE_DAYS,
+                'ONLY_POSTS_WITH_LINKS': cls.ONLY_POSTS_WITH_LINKS,
+                'DM_MESSAGE': cls.DM_MESSAGE,
+                'DEFAULT_LINK': cls.DEFAULT_LINK,
+                'CHECK_INTERVAL': cls.CHECK_INTERVAL,
+                'MAX_POSTS_TO_CHECK': cls.MAX_POSTS_TO_CHECK,
+                'INSTAGRAM_SESSION_ID': cls.INSTAGRAM_SESSION_ID
+            }
+            
+            with open('runtime_config.json', 'w') as f:
+                json.dump(config_data, f, indent=2)
+                
+            print("✅ Runtime configuration saved successfully")
+            return True
+            
         except Exception as e:
-            print(f"❌ Error saving runtime config: {e}")
+            print(f"❌ Error saving runtime configuration: {e}")
+            return False
 
 # Load runtime configuration on import
 Config.load_runtime_config() 
