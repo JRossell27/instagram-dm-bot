@@ -26,7 +26,7 @@ class InstagramBot:
         self.password = Config.INSTAGRAM_PASSWORD
         
     def login(self):
-        """Login to Instagram with backup code support"""
+        """Login to Instagram with session ID or backup code support"""
         try:
             logging.info("Attempting to login to Instagram...")
             
@@ -43,7 +43,25 @@ class InstagramBot:
                     logging.warning(f"Failed to use saved session: {e}")
                     # Continue with fresh login
             
-            # Get backup code from environment
+            # Try session ID login first (bypasses 2FA completely)
+            session_id = os.getenv('INSTAGRAM_SESSION_ID', '').strip()
+            if session_id:
+                logging.info("Attempting login with provided session ID...")
+                try:
+                    self.client.login_by_sessionid(session_id)
+                    logging.info("Successfully logged in using session ID")
+                    self.logged_in = True
+                    
+                    # Save session for future use
+                    self.client.dump_settings(session_file)
+                    logging.info("Session saved for future logins")
+                    
+                    return True
+                except Exception as session_error:
+                    logging.warning(f"Session ID login failed: {session_error}")
+                    logging.info("Falling back to backup code login...")
+            
+            # Fallback to backup code login
             backup_code = os.getenv('INSTAGRAM_2FA_CODE', '').replace(' ', '')
             
             if backup_code:
@@ -77,13 +95,24 @@ class InstagramBot:
 2. The backup code is invalid or expired
 3. Instagram is rejecting automated login attempts
 
-Solutions:
-- Generate NEW backup codes from Instagram app: Settings → Security → Two-Factor Authentication → Recovery Codes
-- Use a fresh, unused backup code
-- Make sure to remove spaces from the code""")
+BETTER SOLUTION - Use Session ID instead:
+1. Login to Instagram in your browser manually
+2. Press F12 → Application → Cookies → instagram.com
+3. Find 'sessionid' cookie and copy its value
+4. Add INSTAGRAM_SESSION_ID environment variable in Render
+5. Remove INSTAGRAM_2FA_CODE variable
+6. Session ID bypasses 2FA completely!""")
             elif "two_factor_required" in error_msg or "two-factor authentication required" in error_msg:
                 logging.error("2FA required but no backup code provided")
-                raise Exception("Instagram 2FA required. Please add INSTAGRAM_2FA_CODE environment variable with your backup code (without spaces).")
+                raise Exception("""Instagram 2FA required. Two options:
+
+OPTION 1 (Recommended): Use Session ID
+- Login manually in browser
+- Extract sessionid cookie (F12 → Application → Cookies)
+- Add INSTAGRAM_SESSION_ID environment variable
+
+OPTION 2: Use backup code
+- Add INSTAGRAM_2FA_CODE environment variable with backup code""")
             elif "challenge_required" in error_msg:
                 logging.error("Instagram challenge required")
                 raise Exception("Instagram requires verification. Try logging in manually first to complete any challenges.")
