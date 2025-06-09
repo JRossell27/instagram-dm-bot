@@ -244,16 +244,16 @@ OPTION 2: Use backup code
             processed_count = 0
             
             for comment in comments:
-                # Skip if already processed
-                if self.db.is_comment_processed(str(comment.id)):
+                # Skip if already processed - use comment.pk instead of comment.id
+                if self.db.is_comment_processed(str(comment.pk)):
                     continue
                 
                 # Check for keywords
                 keyword = self.check_comment_for_keywords(comment.text)
                 if keyword:
-                    # Mark as processed first to avoid duplicates
+                    # Mark as processed first to avoid duplicates - use comment.pk
                     self.db.mark_comment_processed(
-                        str(comment.id),
+                        str(comment.pk),
                         str(comment.user.pk),
                         comment.user.username,
                         str(post.id),
