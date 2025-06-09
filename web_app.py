@@ -151,16 +151,21 @@ def dashboard():
             'default_link': Config.DEFAULT_LINK,
         }
         
+        # Get Instagram account info
+        account_info = get_instagram_account_info()
+        
         return render_template('dashboard.html', 
                              bot_status=bot_status, 
-                             stats=stats)
+                             stats=stats,
+                             account_info=account_info)
                              
     except Exception as e:
         logging.error(f"Dashboard error: {e}")
         flash(f"Error loading dashboard: {str(e)}", 'error')
         return render_template('dashboard.html', 
                              bot_status=bot_status, 
-                             stats={})
+                             stats={},
+                             account_info=None)
 
 @app.route('/start', methods=['POST'])
 def start_bot():
@@ -726,6 +731,11 @@ def auth_instagram_callback():
         if bot:
             bot.logged_in = False
             bot.last_login_check = None
+            bot.access_token = Config.INSTAGRAM_ACCESS_TOKEN
+            bot.user_id = Config.INSTAGRAM_USER_ID
+        
+        # Force re-initialize bot with new credentials
+        init_bot()
         
         return redirect(url_for('dashboard'))
         
@@ -847,6 +857,40 @@ def test_webhook():
 def webhook_test_page():
     """Webhook testing interface page"""
     return render_template('webhook_test.html', bot_status=bot_status)
+
+def get_instagram_account_info():
+    """Get current Instagram account information for dashboard display"""
+    try:
+        if not Config.INSTAGRAM_ACCESS_TOKEN or not Config.INSTAGRAM_USER_ID:
+            return None
+            
+        # Get account info from Instagram Business API
+        url = f"https://graph.instagram.com/v21.0/{Config.INSTAGRAM_USER_ID}"
+        params = {
+            'fields': 'id,username,account_type,profile_picture_url,followers_count,media_count',
+            'access_token': Config.INSTAGRAM_ACCESS_TOKEN
+        }
+        
+        response = requests.get(url, params=params)
+        
+        if response.status_code == 200:
+            account_data = response.json()
+            return {
+                'username': account_data.get('username', 'Unknown'),
+                'account_type': account_data.get('account_type', 'Unknown'),
+                'profile_picture': account_data.get('profile_picture_url', ''),
+                'followers_count': account_data.get('followers_count', 0),
+                'media_count': account_data.get('media_count', 0),
+                'user_id': account_data.get('id', ''),
+                'authenticated': True
+            }
+        else:
+            logging.warning(f"Failed to get account info: {response.status_code}")
+            return None
+            
+    except Exception as e:
+        logging.error(f"Error getting Instagram account info: {e}")
+        return None
 
 if __name__ == '__main__':
     # Load runtime configuration on startup

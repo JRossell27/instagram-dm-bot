@@ -26,6 +26,81 @@
 {% endblock %}
 
 {% block content %}
+<!-- Instagram Account Status -->
+{% if account_info %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-success">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        {% if account_info.profile_picture %}
+                            <img src="{{ account_info.profile_picture }}" 
+                                 alt="@{{ account_info.username }}" 
+                                 class="rounded-circle" 
+                                 style="width: 60px; height: 60px; object-fit: cover;">
+                        {% else %}
+                            <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" 
+                                 style="width: 60px; height: 60px;">
+                                <i class="fab fa-instagram text-white fa-2x"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="flex-grow-1">
+                        <h5 class="mb-1 text-success">
+                            <i class="fas fa-check-circle me-2"></i>Instagram Connected
+                        </h5>
+                        <h6 class="mb-1">@{{ account_info.username }}</h6>
+                        <div class="text-muted small">
+                            <span class="badge bg-info me-2">{{ account_info.account_type }}</span>
+                            <span class="me-3">
+                                <i class="fas fa-users me-1"></i>{{ account_info.followers_count }} followers
+                            </span>
+                            <span>
+                                <i class="fas fa-images me-1"></i>{{ account_info.media_count }} posts
+                            </span>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-success fs-6">
+                            <i class="fas fa-bolt me-1"></i>ManyChat Ready
+                        </span>
+                        <div class="text-muted small mt-1">
+                            User ID: {{ account_info.user_id }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-warning">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="fab fa-instagram fa-3x text-warning"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h5 class="mb-1 text-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Instagram Not Connected
+                        </h5>
+                        <p class="mb-0">Please connect your Instagram Business account to enable ManyChat-style automation.</p>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('instagram_login_pro_page') }}" class="btn btn-warning">
+                            <i class="fab fa-instagram me-2"></i>Connect Instagram
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Status Cards -->
 <div class="row mb-4">
     <div class="col-md-3">
