@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block header %}Dashboard{% endblock %}
+
+{% block header_buttons %}
+<div class="btn-group" role="group">
+    {% if bot_status.running %}
+        <form method="POST" action="{{ url_for('stop_bot') }}" class="d-inline">
+            <button type="submit" class="btn btn-danger">
+                <i class="fas fa-stop me-1"></i>Stop Bot
+            </button>
+        </form>
+    {% else %}
+        <form method="POST" action="{{ url_for('start_bot') }}" class="d-inline">
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-play me-1"></i>Start Bot
+            </button>
+        </form>
+    {% endif %}
+    <form method="POST" action="{{ url_for('run_once') }}" class="d-inline">
+        <button type="submit" class="btn btn-outline-primary">
+            <i class="fas fa-play-circle me-1"></i>Test Run
+        </button>
+    </form>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Status Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card status-card {% if bot_status.running %}status-running{% else %}status-offline{% endif %}">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="card-title mb-0">Bot Status</h6>
+                        <h4 class="mb-0 {% if bot_status.running %}text-success{% else %}text-danger{% endif %}">
+                            {% if bot_status.running %}Running{% else %}Stopped{% endif %}
+                        </h4>
+                    </div>
+                    <i class="fas fa-robot fa-2x {% if bot_status.running %}text-success{% else %}text-muted{% endif %}"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card status-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="card-title mb-0">Total Processed</h6>
+                        <h4 class="mb-0 text-primary">{{ stats.total_processed or 0 }}</h4>
+                    </div>
+                    <i class="fas fa-comments fa-2x text-primary"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card status-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="card-title mb-0">Keywords</h6>
+                        <h4 class="mb-0 text-info">{{ stats.keywords|length }}</h4>
+                    </div>
+                    <i class="fas fa-tags fa-2x text-info"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card status-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="card-title mb-0">Check Interval</h6>
+                        <h4 class="mb-0 text-warning">{{ stats.check_interval }}m</h4>
+                    </div>
+                    <i class="fas fa-clock fa-2x text-warning"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Configuration Overview -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-cog me-2"></i>Configuration Overview
+                </h5>
+                <a href="{{ url_for('config_page') }}" class="btn btn-sm btn-outline-primary">
+                    Edit Configuration
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">Monitored Keywords</h6>
+                        <div class="mb-3">
+                            {% for keyword in stats.keywords %}
+                                <span class="badge bg-primary me-1 mb-1">{{ keyword }}</span>
+                            {% endfor %}
+                        </div>
+                        
+                        <h6 class="text-muted mb-2">Post Filtering</h6>
+                        {% if stats.monitor_all_posts %}
+                            <span class="badge bg-success">Monitoring ALL posts</span>
+                        {% else %}
+                            {% if stats.specific_posts > 0 %}
+                                <span class="badge bg-info">{{ stats.specific_posts }} specific posts</span>
+                            {% endif %}
+                            {% if stats.required_hashtags %}
+                                <span class="badge bg-secondary">Hashtag filtering</span>
+                            {% endif %}
+                            {% if stats.required_phrases %}
+                                <span class="badge bg-secondary">Phrase filtering</span>
+                            {% endif %}
+                            {% if stats.max_age_days %}
+                                <span class="badge bg-secondary">{{ stats.max_age_days }} day limit</span>
+                            {% endif %}
+                            {% if not stats.specific_posts and not stats.required_hashtags and not stats.required_phrases %}
+                                <span class="badge bg-warning">No filters configured</span>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {% if bot_status.last_run %}
+                        <h6 class="text-muted mb-2">Last Run</h6>
+                        <p class="mb-3">{{ bot_status.last_run.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                        {% endif %}
+                        
+                        {% if bot_status.next_run %}
+                        <h6 class="text-muted mb-2">Next Run</h6>
+                        <p class="mb-3">{{ bot_status.next_run.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                        {% endif %}
+                        
+                        {% if bot_status.error_message %}
+                        <h6 class="text-muted mb-2">Error</h6>
+                        <div class="alert alert-danger py-2">
+                            {{ bot_status.error_message }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>Quick Stats
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Status:</span>
+                    <span class="{% if bot_status.running %}text-success{% else %}text-danger{% endif %}">
+                        {% if bot_status.running %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Keywords:</span>
+                    <span>{{ stats.keywords|length }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Total Processed:</span>
+                    <span>{{ stats.total_processed or 0 }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>Check Interval:</span>
+                    <span>{{ stats.check_interval }} min</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>Recent Activity
+                </h5>
+                <a href="{{ url_for('logs_page') }}" class="btn btn-sm btn-outline-secondary">
+                    View All Logs
+                </a>
+            </div>
+            <div class="card-body">
+                {% if stats.recent_activity %}
+                    {% for activity in stats.recent_activity %}
+                    <div class="activity-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>@{{ activity[0] }}</strong> commented with keyword 
+                                <span class="badge bg-primary">{{ activity[1] }}</span>
+                            </div>
+                            <small class="text-muted">{{ activity[2] }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>No recent activity</p>
+                        <p class="small">Comments matching your keywords will appear here</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Auto-refresh dashboard every 60 seconds
+    setInterval(function() {
+        location.reload();
+    }, 60000);
+</script>
+{% endblock %} 

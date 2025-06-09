@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block header %}Configuration{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="alert alert-info" role="alert">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Note:</strong> To modify these settings, edit the <code>config.py</code> file and restart the application.
+        </div>
+        
+        <!-- Keywords Configuration -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-tags me-2"></i>Keywords Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6 class="text-muted mb-3">Monitored Keywords</h6>
+                <div class="mb-3">
+                    {% for keyword in config.keywords %}
+                        <span class="badge bg-primary me-2 mb-2">{{ keyword }}</span>
+                    {% endfor %}
+                </div>
+                
+                <div class="code-block bg-light p-3 rounded">
+                    <strong>config.py:</strong><br>
+                    <code>
+                        KEYWORDS = [<br>
+                        {% for keyword in config.keywords %}
+                            &nbsp;&nbsp;&nbsp;&nbsp;'{{ keyword }}',<br>
+                        {% endfor %}
+                        ]
+                    </code>
+                </div>
+            </div>
+        </div>
+        
+        <!-- DM Message Configuration -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-envelope me-2"></i>DM Message Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6 class="text-muted mb-3">Message Template</h6>
+                <div class="alert alert-light">
+                    {{ config.dm_message|replace('\n', '<br>')|safe }}
+                </div>
+                
+                <h6 class="text-muted mb-3">Default Link</h6>
+                <p class="mb-3">
+                    <a href="{{ config.default_link }}" target="_blank" class="text-decoration-none">
+                        {{ config.default_link }}
+                        <i class="fas fa-external-link-alt ms-1 small"></i>
+                    </a>
+                </p>
+                
+                <div class="code-block bg-light p-3 rounded">
+                    <strong>config.py:</strong><br>
+                    <code>
+                        DM_MESSAGE = """{{ config.dm_message }}"""<br><br>
+                        DEFAULT_LINK = "{{ config.default_link }}"
+                    </code>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Post Filtering Configuration -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-filter me-2"></i>Post Filtering Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">General Settings</h6>
+                        
+                        <div class="mb-3">
+                            <strong>Monitor All Posts:</strong>
+                            <span class="badge {% if config.monitor_all_posts %}bg-success{% else %}bg-secondary{% endif %}">
+                                {{ 'Yes' if config.monitor_all_posts else 'No' }}
+                            </span>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <strong>Check Interval:</strong>
+                            <span class="badge bg-info">{{ config.check_interval }} minutes</span>
+                        </div>
+                        
+                        {% if config.max_post_age_days %}
+                        <div class="mb-3">
+                            <strong>Max Post Age:</strong>
+                            <span class="badge bg-warning">{{ config.max_post_age_days }} days</span>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="mb-3">
+                            <strong>Only Posts with Links:</strong>
+                            <span class="badge {% if config.only_posts_with_links %}bg-success{% else %}bg-secondary{% endif %}">
+                                {{ 'Yes' if config.only_posts_with_links else 'No' }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">Filtering Rules</h6>
+                        
+                        {% if config.specific_post_ids %}
+                        <div class="mb-3">
+                            <strong>Specific Post IDs:</strong><br>
+                            {% for post_id in config.specific_post_ids %}
+                                <span class="badge bg-info me-1 mb-1">{{ post_id }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        {% if config.required_hashtags %}
+                        <div class="mb-3">
+                            <strong>Required Hashtags:</strong><br>
+                            {% for hashtag in config.required_hashtags %}
+                                <span class="badge bg-secondary me-1 mb-1">{{ hashtag }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        {% if config.required_caption_words %}
+                        <div class="mb-3">
+                            <strong>Required Caption Words:</strong><br>
+                            {% for word in config.required_caption_words %}
+                                <span class="badge bg-secondary me-1 mb-1">{{ word }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        {% if not config.specific_post_ids and not config.required_hashtags and not config.required_caption_words and not config.monitor_all_posts %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            No filtering rules configured. The bot will not monitor any posts.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Configuration Help -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-question-circle me-2"></i>Configuration Help
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6 class="text-primary">How to Modify Settings</h6>
+                <ol class="small mb-3">
+                    <li>Edit the <code>config.py</code> file</li>
+                    <li>Save your changes</li>
+                    <li>Restart the web application</li>
+                </ol>
+                
+                <h6 class="text-primary">Quick Actions</h6>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('posts_page') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-images me-1"></i>View Posts
+                    </a>
+                    <a href="{{ url_for('logs_page') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-file-alt me-1"></i>View Logs
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-success btn-sm">
+                        <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                    </a>
+                </div>
+                
+                <hr>
+                
+                <h6 class="text-primary">Post Filtering Options</h6>
+                <div class="small">
+                    <p><strong>Monitor All Posts:</strong> Enable to monitor every post</p>
+                    <p><strong>Specific Post IDs:</strong> Monitor only listed posts</p>
+                    <p><strong>Hashtag Filtering:</strong> Monitor posts with specific hashtags</p>
+                    <p><strong>Caption Filtering:</strong> Monitor posts with specific phrases</p>
+                    <p><strong>Age Filtering:</strong> Only monitor recent posts</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-code me-2"></i>Example Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="code-block bg-dark text-light p-3 rounded small">
+                    <code>
+                        # Monitor specific posts only<br>
+                        MONITOR_ALL_POSTS = False<br>
+                        SPECIFIC_POST_IDS = [<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;"ABC123DEF",<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;"XYZ789GHI"<br>
+                        ]<br><br>
+                        
+                        # Or use hashtag filtering<br>
+                        REQUIRED_HASHTAGS = [<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;"#dmbot",<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;"#automate"<br>
+                        ]
+                    </code>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
