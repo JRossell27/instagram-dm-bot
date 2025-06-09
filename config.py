@@ -1,4 +1,5 @@
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -65,4 +66,47 @@ Let me know if you have any questions!"""
     MAX_POST_AGE_DAYS = 7  # Set to None to disable age filtering
     
     # Option 6: Only monitor posts that contain links in bio/caption
-    ONLY_POSTS_WITH_LINKS = False 
+    ONLY_POSTS_WITH_LINKS = False
+
+    # Runtime configuration file
+    RUNTIME_CONFIG_FILE = "runtime_config.json"
+    
+    @classmethod
+    def load_runtime_config(cls):
+        """Load runtime configuration changes from JSON file"""
+        if os.path.exists(cls.RUNTIME_CONFIG_FILE):
+            try:
+                with open(cls.RUNTIME_CONFIG_FILE, 'r') as f:
+                    runtime_config = json.load(f)
+                
+                # Update class attributes with runtime values
+                for key, value in runtime_config.items():
+                    if hasattr(cls, key):
+                        setattr(cls, key, value)
+                        
+            except Exception as e:
+                print(f"Error loading runtime config: {e}")
+    
+    @classmethod
+    def save_runtime_config(cls):
+        """Save current configuration to JSON file for persistence"""
+        runtime_config = {
+            'KEYWORDS': cls.KEYWORDS,
+            'MONITOR_ALL_POSTS': cls.MONITOR_ALL_POSTS,
+            'SPECIFIC_POST_IDS': cls.SPECIFIC_POST_IDS,
+            'REQUIRED_HASHTAGS': cls.REQUIRED_HASHTAGS,
+            'REQUIRED_CAPTION_WORDS': cls.REQUIRED_CAPTION_WORDS,
+            'MAX_POST_AGE_DAYS': cls.MAX_POST_AGE_DAYS,
+            'ONLY_POSTS_WITH_LINKS': cls.ONLY_POSTS_WITH_LINKS,
+            'DM_MESSAGE': cls.DM_MESSAGE,
+            'DEFAULT_LINK': cls.DEFAULT_LINK,
+        }
+        
+        try:
+            with open(cls.RUNTIME_CONFIG_FILE, 'w') as f:
+                json.dump(runtime_config, f, indent=2)
+        except Exception as e:
+            print(f"Error saving runtime config: {e}")
+
+# Load runtime configuration on import
+Config.load_runtime_config() 

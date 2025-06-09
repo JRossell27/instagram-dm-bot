@@ -350,7 +350,9 @@ def update_monitored_posts():
         Config.SPECIFIC_POST_IDS = selected_posts
         Config.MONITOR_ALL_POSTS = len(selected_posts) == 0  # If no specific posts, monitor all
         
-        # Save to config file (you might want to implement this)
+        # Save configuration changes to persist across restarts
+        Config.save_runtime_config()
+        
         flash(f"Updated monitoring for {len(selected_posts)} posts", 'success')
         
         return redirect('/manage_posts')
@@ -410,6 +412,9 @@ def update_keywords():
         Config.DM_MESSAGE = request.form.get('dm_message', Config.DM_MESSAGE)
         Config.DEFAULT_LINK = request.form.get('default_link', Config.DEFAULT_LINK)
         
+        # Save configuration changes to persist across restarts
+        Config.save_runtime_config()
+        
         flash("Settings updated successfully!", 'success')
         
         return redirect('/manage_keywords')
@@ -419,7 +424,65 @@ def update_keywords():
         flash(f"Error updating settings: {e}", 'error')
         return redirect('/manage_keywords')
 
+@app.route('/debug')
+def debug_page():
+    """Debug page to help troubleshoot configuration issues"""
+    try:
+        debug_info = {
+            'config': {
+                'keywords': Config.KEYWORDS,
+                'monitor_all_posts': Config.MONITOR_ALL_POSTS,
+                'specific_post_ids': Config.SPECIFIC_POST_IDS,
+                'required_hashtags': Config.REQUIRED_HASHTAGS,
+                'required_caption_words': Config.REQUIRED_CAPTION_WORDS,
+                'max_post_age_days': Config.MAX_POST_AGE_DAYS,
+                'dm_message': Config.DM_MESSAGE,
+                'default_link': Config.DEFAULT_LINK,
+            },
+            'bot_logged_in': bot and bot.logged_in,
+            'runtime_config_exists': os.path.exists(Config.RUNTIME_CONFIG_FILE),
+            'issues': []
+        }
+        
+        # Check for common issues
+        if not Config.MONITOR_ALL_POSTS and not Config.SPECIFIC_POST_IDS:
+            debug_info['issues'].append("❌ No posts being monitored - set MONITOR_ALL_POSTS=True or select specific posts")
+        
+        if not Config.KEYWORDS:
+            debug_info['issues'].append("❌ No keywords configured")
+            
+        if Config.DEFAULT_LINK == "https://your-website.com":
+            debug_info['issues'].append("⚠️ Default link not customized")
+            
+        if not (bot and bot.logged_in):
+            debug_info['issues'].append("❌ Bot not logged in to Instagram")
+        
+        # Try to get recent posts info if logged in
+        if bot and bot.logged_in:
+            try:
+                recent_posts = bot.get_recent_posts(5)
+                debug_info['recent_posts'] = []
+                for post in recent_posts:
+                    is_monitored = bot.should_monitor_post(post)
+                    debug_info['recent_posts'].append({
+                        'code': post.code,
+                        'date': post.taken_at.strftime("%Y-%m-%d %H:%M"),
+                        'caption_preview': (post.caption_text[:50] + "...") if post.caption_text else "No caption",
+                        'is_monitored': is_monitored
+                    })
+            except Exception as e:
+                debug_info['posts_error'] = str(e)
+        
+        return render_template('debug.html', debug=debug_info, bot_status=bot_status)
+        
+    except Exception as e:
+        logging.error(f"Debug page error: {e}")
+        return f"Debug error: {e}", 500
+
 if __name__ == '__main__':
+    # Load runtime configuration on startup
+    Config.load_runtime_config()
+    
     # Initialize on startup
     init_bot()
     
