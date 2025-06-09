@@ -3,6 +3,9 @@
 {% block header %}Posts{% endblock %}
 
 {% block header_buttons %}
+<a href="/manage_posts" class="btn btn-success me-2">
+    <i class="fas fa-list-check me-1"></i>Manage Posts
+</a>
 <button type="button" class="btn btn-outline-primary" onclick="location.reload()">
     <i class="fas fa-sync-alt me-1"></i>Refresh
 </button>
@@ -13,8 +16,8 @@
     <div class="col-12">
         <div class="alert alert-info" role="alert">
             <i class="fas fa-info-circle me-2"></i>
-            <strong>Post Monitoring Status:</strong> Posts marked with a green badge are currently being monitored for comments. 
-            To change which posts are monitored, edit the filtering settings in <code>config.py</code>.
+            <strong>Post Monitoring Status:</strong> Showing up to 50 recent posts. Posts marked with a green badge are currently being monitored for comments. 
+            <a href="/manage_posts" class="alert-link">Click here to select specific posts to monitor</a> or edit filtering settings in the configuration.
         </div>
         
         <div class="card">

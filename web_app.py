@@ -241,7 +241,7 @@ def posts_page():
                 flash(f'Failed to connect to Instagram: {bot_status["error_message"]}', 'error')
                 return render_template('posts.html', posts=[], bot_status=bot_status)
         
-        posts = bot.get_recent_posts(15)  # Get more posts for selection
+        posts = bot.get_recent_posts(50)  # Get more posts for selection
         posts_data = []
         
         for post in posts:
@@ -313,7 +313,7 @@ def manage_posts():
                                  bot_status=bot_status)
         
         # Get recent posts for selection
-        recent_posts = bot.get_recent_posts(20)  # Get more posts for management
+        recent_posts = bot.get_recent_posts(50)  # Get more posts for management
         
         # Get current monitored posts from config
         current_posts = Config.SPECIFIC_POST_IDS if hasattr(Config, 'SPECIFIC_POST_IDS') else []

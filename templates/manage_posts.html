@@ -261,15 +261,25 @@
                     {% else %}
                         Monitoring all posts (no specific selection)
                     {% endif %}
+                    <span class="text-muted"> | Showing up to 50 recent posts</span>
                 </div>
 
                 <form method="POST" action="/update_monitored_posts">
                     <div class="select-all-controls">
                         <button type="button" onclick="selectAll()" class="btn btn-secondary">Select All</button>
                         <button type="button" onclick="selectNone()" class="btn btn-secondary">Select None</button>
-                        <span style="margin-left: 20px; color: #666;">
+                        <input type="text" id="search-posts" placeholder="Search posts by caption..." 
+                               style="margin-left: 20px; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                        <span style="margin-left: 15px; color: #666;">
                             Select specific posts to monitor, or leave all unchecked to monitor all posts
                         </span>
+                        <div class="mt-2">
+                            <small class="text-info">
+                                <i class="fas fa-info-circle me-1"></i>
+                                <span id="selected-count">0</span> of {{ posts|length }} posts selected | 
+                                <span id="visible-count">{{ posts|length }}</span> posts visible
+                            </small>
+                        </div>
                     </div>
 
                     <div class="posts-grid">
@@ -313,14 +323,43 @@
 
         function updatePostCards() {
             const checkboxes = document.querySelectorAll('input[name="selected_posts"]');
+            let selectedCount = 0;
+            let visibleCount = 0;
+            
             checkboxes.forEach(cb => {
                 const card = cb.closest('.post-card');
+                if (card.style.display !== 'none') {
+                    visibleCount++;
+                }
                 if (cb.checked) {
                     card.classList.add('monitored');
+                    selectedCount++;
                 } else {
                     card.classList.remove('monitored');
                 }
             });
+            
+            // Update counters
+            document.getElementById('selected-count').textContent = selectedCount;
+            document.getElementById('visible-count').textContent = visibleCount;
+        }
+        
+        function filterPosts() {
+            const searchTerm = document.getElementById('search-posts').value.toLowerCase();
+            const postCards = document.querySelectorAll('.post-card');
+            
+            postCards.forEach(card => {
+                const caption = card.querySelector('.post-caption').textContent.toLowerCase();
+                const postCode = card.querySelector('.post-code').textContent.toLowerCase();
+                
+                if (caption.includes(searchTerm) || postCode.includes(searchTerm)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            updatePostCards();
         }
 
         // Add event listeners to checkboxes
@@ -329,6 +368,13 @@
             checkboxes.forEach(cb => {
                 cb.addEventListener('change', updatePostCards);
             });
+            
+            // Add search functionality
+            const searchBox = document.getElementById('search-posts');
+            searchBox.addEventListener('input', filterPosts);
+            
+            // Initialize counters
+            updatePostCards();
         });
     </script>
 </body>
