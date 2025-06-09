@@ -471,6 +471,53 @@ def webhook_test_page():
     """Webhook testing interface page"""
     return render_template('webhook_test.html', bot_status=bot_status)
 
+@app.route('/instagram-setup')
+def instagram_setup():
+    """Instagram setup and login page"""
+    try:
+        # Check current login status
+        login_info = {
+            'username': Config.INSTAGRAM_USERNAME,
+            'has_session_id': bool(Config.INSTAGRAM_SESSION_ID),
+            'session_id_preview': f"{Config.INSTAGRAM_SESSION_ID[:8]}...{Config.INSTAGRAM_SESSION_ID[-8:]}" if Config.INSTAGRAM_SESSION_ID else None
+        }
+        
+        return render_template('instagram_login_manual.html', 
+                             login=login_info,
+                             bot_status=bot_status)
+                             
+    except Exception as e:
+        logging.error(f"Error in Instagram setup page: {e}")
+        flash(f'Error loading Instagram setup: {str(e)}', 'error')
+        return redirect(url_for('dashboard'))
+
+@app.route('/update_instagram_login', methods=['POST'])
+def update_instagram_login():
+    """Update Instagram login credentials"""
+    try:
+        session_id = request.form.get('session_id', '').strip()
+        
+        if session_id:
+            Config.INSTAGRAM_SESSION_ID = session_id
+            # Save to runtime config
+            Config.save_runtime_config()
+            
+            # Reinitialize bot with new session
+            global bot
+            bot = None  # Reset bot
+            if init_bot():
+                flash('✅ Instagram session ID updated and bot authenticated successfully!', 'success')
+            else:
+                flash('⚠️ Session ID saved but authentication failed. Please check the session ID.', 'warning')
+        else:
+            flash('❌ Please provide a valid session ID.', 'error')
+            
+    except Exception as e:
+        logging.error(f"Error updating Instagram login: {e}")
+        flash(f'❌ Error updating Instagram login: {str(e)}', 'error')
+    
+    return redirect(url_for('instagram_setup'))
+
 def get_instagram_account_info():
     """Get current Instagram account information for dashboard display"""
     try:
