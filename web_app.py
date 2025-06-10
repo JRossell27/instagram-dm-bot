@@ -410,16 +410,25 @@ def instagram_webhook():
                     if changes.get('field') == 'comments':
                         comment_data = changes.get('value', {})
                         
-                        # Only process new comments (not deleted)
-                        if comment_data.get('verb') == 'add':
+                        # Process comments (Instagram webhooks for comments are typically 'add' events)
+                        # Only skip if explicitly marked as 'remove' or 'hide'
+                        comment_verb = comment_data.get('verb', 'add')  # Default to 'add' if not specified
+                        
+                        if comment_verb not in ['remove', 'hide']:
+                            logging.info(f"🔄 Processing comment webhook (verb: {comment_verb})")
                             global bot
                             if bot and bot.logged_in:
                                 # Process comment using ManyChat strategy
                                 success = bot.process_comment_webhook(comment_data)
                                 if success:
                                     bot_status['total_dms_sent'] += 1
+                                    logging.info(f"✅ Comment processed successfully - DM sent!")
+                                else:
+                                    logging.warning(f"⚠️ Comment processed but no DM sent")
                             else:
                                 logging.warning("❌ Bot not initialized or not logged in")
+                        else:
+                            logging.info(f"⏭️ Skipping {comment_verb} comment event")
             
             return 'OK', 200
             
