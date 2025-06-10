@@ -116,10 +116,23 @@ class InstagramBot:
     def reply_to_comment(self, comment_id, message):
         """Reply to a comment publicly"""
         try:
-            # Instagram Business API doesn't support comment replies directly
-            # This would require a different approach or manual intervention
-            logging.warning("⚠️ Public comment replies not yet implemented for Business API")
-            return False
+            # Instagram Business API comment reply endpoint
+            url = f"https://graph.instagram.com/v21.0/{comment_id}/replies"
+            
+            data = {
+                'message': message,
+                'access_token': self.access_token
+            }
+            
+            response = requests.post(url, data=data)
+            
+            if response.status_code == 200:
+                logging.info(f"✅ Comment reply sent successfully to comment {comment_id}")
+                return True
+            else:
+                error_data = response.json() if response.text else {}
+                logging.error(f"Failed to reply to comment {comment_id}: {response.status_code} - {error_data}")
+                return False
                 
         except Exception as e:
             logging.error(f"Error replying to comment {comment_id}: {e}")
@@ -212,7 +225,25 @@ class InstagramBot:
                                 logging.info(f"✅ CONSENT DM sent to @{author_username}")
                                 return True
                             else:
-                                logging.error(f"❌ Failed to send consent-based DM to @{author_username}")
+                                # DM failed - try comment reply as fallback
+                                logging.info(f"🔄 DM failed, trying comment reply fallback for @{author_username}")
+                                reply_message = f"Hi @{author_username}! I saw your request. Please DM me and I'll send you the link! 📩"
+                                
+                                if self.reply_to_comment(comment_id, reply_message):
+                                    self.db.add_processed_comment(
+                                        comment_id=comment_id,
+                                        post_id=media_id,
+                                        username=author_username,
+                                        user_id=author_id,
+                                        comment_text=comment_text,
+                                        keyword=matched_keyword,
+                                        action_taken='comment_reply_fallback'
+                                    )
+                                    logging.info(f"✅ Comment reply sent as fallback to @{author_username}")
+                                    return True
+                                else:
+                                    logging.error(f"❌ Both DM and comment reply failed for @{author_username}")
+                                    return False
                         else:
                             # No consent - encourage DM via public reply (if available)
                             logging.info(f"📢 NO CONSENT: Encouraging @{author_username} to DM")
@@ -246,7 +277,25 @@ class InstagramBot:
                             logging.info(f"✅ KEYWORD DM sent to @{author_username} for '{matched_keyword}'")
                             return True
                         else:
-                            logging.error(f"❌ Failed to send keyword-based DM to @{author_username}")
+                            # DM failed - try comment reply as fallback
+                            logging.info(f"🔄 DM failed, trying comment reply fallback for @{author_username}")
+                            reply_message = f"Hi @{author_username}! I saw your interest in '{matched_keyword}'. Please DM me and I'll send you the details! 📩"
+                            
+                            if self.reply_to_comment(comment_id, reply_message):
+                                self.db.add_processed_comment(
+                                    comment_id=comment_id,
+                                    post_id=media_id,
+                                    username=author_username,
+                                    user_id=author_id,
+                                    comment_text=comment_text,
+                                    keyword=matched_keyword,
+                                    action_taken='comment_reply_fallback_any_keyword'
+                                )
+                                logging.info(f"✅ Comment reply sent as fallback to @{author_username}")
+                                return True
+                            else:
+                                logging.error(f"❌ Both DM and comment reply failed for @{author_username}")
+                                return False
                 
                 return False
             else:
