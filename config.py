@@ -62,6 +62,11 @@ class Config:
 
 Let me know if you have any questions! 🙂"""
     
+    # Comment reply templates (when DMs fail)
+    COMMENT_REPLY_CONSENT = "Hi @{username}! I saw your request. Please DM me and I'll send you the link! 📩"
+    COMMENT_REPLY_INTEREST = "Hi @{username}! I saw your interest in '{keyword}'. Please DM me and I'll send you the details! 📩"
+    COMMENT_REPLY_ENCOURAGEMENT = "Great question @{username}! DM me '{keyword}' for the full details 📩"
+    
     # Default link to send (can be customized)
     DEFAULT_LINK = "https://your-website.com"
     
@@ -118,6 +123,11 @@ Let me know if you have any questions! 🙂"""
                 # Load keyword strategy
                 cls.KEYWORD_STRATEGY = config_data.get('KEYWORD_STRATEGY', getattr(cls, 'KEYWORD_STRATEGY', 'consent_required'))
                 
+                # Load comment reply templates
+                cls.COMMENT_REPLY_CONSENT = config_data.get('COMMENT_REPLY_CONSENT', cls.COMMENT_REPLY_CONSENT)
+                cls.COMMENT_REPLY_INTEREST = config_data.get('COMMENT_REPLY_INTEREST', cls.COMMENT_REPLY_INTEREST)
+                cls.COMMENT_REPLY_ENCOURAGEMENT = config_data.get('COMMENT_REPLY_ENCOURAGEMENT', cls.COMMENT_REPLY_ENCOURAGEMENT)
+                
                 print("✅ Runtime configuration loaded successfully")
                 return True
             else:
@@ -142,6 +152,11 @@ Let me know if you have any questions! 🙂"""
                 'DM_MESSAGE': cls.DM_MESSAGE,
                 'DEFAULT_LINK': cls.DEFAULT_LINK,
                 'ENABLE_DIRECT_DM': cls.ENABLE_DIRECT_DM,
+                
+                # Comment Reply Templates
+                'COMMENT_REPLY_CONSENT': getattr(cls, 'COMMENT_REPLY_CONSENT', "Hi @{username}! I saw your request. Please DM me and I'll send you the link! 📩"),
+                'COMMENT_REPLY_INTEREST': getattr(cls, 'COMMENT_REPLY_INTEREST', "Hi @{username}! I saw your interest in '{keyword}'. Please DM me and I'll send you the details! 📩"),
+                'COMMENT_REPLY_ENCOURAGEMENT': getattr(cls, 'COMMENT_REPLY_ENCOURAGEMENT', "Great question @{username}! DM me '{keyword}' for the full details 📩"),
                 
                 # Webhook Settings
                 'WEBHOOK_BASE_URL': cls.WEBHOOK_BASE_URL,

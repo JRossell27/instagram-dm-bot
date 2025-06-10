@@ -204,6 +204,9 @@ class InstagramBot:
                 # Apply keyword strategy
                 if Config.KEYWORD_STRATEGY == 'consent_required':
                     # MANYCHAT STRATEGY: Require explicit consent for direct DM
+                    logging.info(f"🔍 Using consent_required strategy. Checking for consent in: '{comment_text}'")
+                    logging.info(f"🔍 Available consent keywords: {Config.CONSENT_KEYWORDS}")
+                    
                     if Config.ENABLE_DIRECT_DM and author_id:
                         has_consent = self.has_consent_to_dm(comment_text)
                         
@@ -227,7 +230,7 @@ class InstagramBot:
                             else:
                                 # DM failed - try comment reply as fallback
                                 logging.info(f"🔄 DM failed, trying comment reply fallback for @{author_username}")
-                                reply_message = f"Hi @{author_username}! I saw your request. Please DM me and I'll send you the link! 📩"
+                                reply_message = Config.COMMENT_REPLY_CONSENT.format(username=author_username)
                                 
                                 if self.reply_to_comment(comment_id, reply_message):
                                     self.db.add_processed_comment(
@@ -245,21 +248,30 @@ class InstagramBot:
                                     logging.error(f"❌ Both DM and comment reply failed for @{author_username}")
                                     return False
                         else:
-                            # No consent - encourage DM via public reply (if available)
-                            logging.info(f"📢 NO CONSENT: Encouraging @{author_username} to DM")
-                            self.db.add_processed_comment(
-                                comment_id=comment_id,
-                                post_id=media_id,
-                                username=author_username,
-                                user_id=author_id,
-                                comment_text=comment_text,
-                                keyword=matched_keyword,
-                                action_taken='encouraged_to_dm'
-                            )
-                            return True
+                            # No consent - encourage DM via public reply
+                            logging.info(f"📢 NO CONSENT: Encouraging @{author_username} to DM with encouragement reply")
+                            reply_message = Config.COMMENT_REPLY_ENCOURAGEMENT.format(username=author_username, keyword=matched_keyword)
+                            
+                            if self.reply_to_comment(comment_id, reply_message):
+                                self.db.add_processed_comment(
+                                    comment_id=comment_id,
+                                    post_id=media_id,
+                                    username=author_username,
+                                    user_id=author_id,
+                                    comment_text=comment_text,
+                                    keyword=matched_keyword,
+                                    action_taken='encouraged_to_dm'
+                                )
+                                logging.info(f"✅ Encouragement comment reply sent to @{author_username}")
+                                return True
+                            else:
+                                logging.error(f"❌ Failed to send encouragement reply to @{author_username}")
+                                return False
                 
                 elif Config.KEYWORD_STRATEGY == 'any_keyword':
                     # ANY KEYWORD STRATEGY: Send DM for any matched keyword (traditional approach)
+                    logging.info(f"🔍 Using any_keyword strategy for '{matched_keyword}'")
+                    
                     if Config.ENABLE_DIRECT_DM and author_id:
                         dm_message = self.get_direct_dm_message(author_username, comment_text, matched_keyword)
                         
@@ -279,7 +291,7 @@ class InstagramBot:
                         else:
                             # DM failed - try comment reply as fallback
                             logging.info(f"🔄 DM failed, trying comment reply fallback for @{author_username}")
-                            reply_message = f"Hi @{author_username}! I saw your interest in '{matched_keyword}'. Please DM me and I'll send you the details! 📩"
+                            reply_message = Config.COMMENT_REPLY_INTEREST.format(username=author_username, keyword=matched_keyword)
                             
                             if self.reply_to_comment(comment_id, reply_message):
                                 self.db.add_processed_comment(
