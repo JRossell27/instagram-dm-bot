@@ -397,6 +397,80 @@
     </div>
 </div>
 
+<!-- Comment Reply Templates Configuration -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-comments me-2"></i>Comment Reply Templates
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>How Comment Replies Work:</strong> When DMs fail due to Instagram's messaging restrictions, the bot automatically replies to the comment instead. Customize these templates below.
+                </div>
+                
+                <form id="commentReplyForm">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="consentReply" class="form-label">
+                                    <strong class="text-success">Consent Reply Template</strong>
+                                    <small class="d-block text-muted">When user requests DM (consent keywords)</small>
+                                </label>
+                                <textarea class="form-control" id="consentReply" name="consent_reply" rows="3" placeholder="Hi @{username}! I saw your request...">{{ stats.comment_reply_consent or 'Hi @{username}! I saw your request. Please DM me and I\'ll send you the link! 📩' }}</textarea>
+                                <small class="form-text text-muted">Available variables: {username}</small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="interestReply" class="form-label">
+                                    <strong class="text-info">Interest Reply Template</strong>
+                                    <small class="d-block text-muted">When user shows interest (interest keywords)</small>
+                                </label>
+                                <textarea class="form-control" id="interestReply" name="interest_reply" rows="3" placeholder="Hi @{username}! I saw your interest...">{{ stats.comment_reply_interest or 'Hi @{username}! I saw your interest in \'{keyword}\'. Please DM me and I\'ll send you the details! 📩' }}</textarea>
+                                <small class="form-text text-muted">Available variables: {username}, {keyword}</small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="encouragementReply" class="form-label">
+                                    <strong class="text-warning">Encouragement Reply Template</strong>
+                                    <small class="d-block text-muted">When no consent but keyword matched</small>
+                                </label>
+                                <textarea class="form-control" id="encouragementReply" name="encouragement_reply" rows="3" placeholder="Great question @{username}...">{{ stats.comment_reply_encouragement or 'Great question @{username}! DM me \'{keyword}\' for the full details 📩' }}</textarea>
+                                <small class="form-text text-muted">Available variables: {username}, {keyword}</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <button type="button" class="btn btn-success" onclick="saveCommentReplyTemplates()">
+                                        <i class="fas fa-save me-2"></i>Save Templates
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary ms-2" onclick="resetCommentReplyTemplates()">
+                                        <i class="fas fa-undo me-2"></i>Reset to Defaults
+                                    </button>
+                                </div>
+                                <div class="text-muted">
+                                    <small><i class="fas fa-lightbulb me-1"></i>Use emojis to make replies more engaging!</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ManyChat Strategy Status -->
 <div class="row mb-4">
     <div class="col-12">
@@ -558,5 +632,73 @@ setInterval(function() {
         })
         .catch(error => console.log('Status update failed:', error));
 }, 30000);
+
+// Save comment reply templates
+function saveCommentReplyTemplates() {
+    const consentReply = document.getElementById('consentReply').value;
+    const interestReply = document.getElementById('interestReply').value;
+    const encouragementReply = document.getElementById('encouragementReply').value;
+    
+    fetch('/api/save_comment_templates', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            consent_reply: consentReply,
+            interest_reply: interestReply,
+            encouragement_reply: encouragementReply
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ Comment reply templates saved successfully!');
+        } else {
+            alert('❌ Failed to save templates: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error saving templates:', error);
+        alert('❌ Error saving templates. Please try again.');
+    });
+}
+
+// Reset comment reply templates to defaults
+function resetCommentReplyTemplates() {
+    if (confirm('Are you sure you want to reset all comment reply templates to defaults?')) {
+        document.getElementById('consentReply').value = "Hi @{username}! I saw your request. Please DM me and I'll send you the link! 📩";
+        document.getElementById('interestReply').value = "Hi @{username}! I saw your interest in '{keyword}'. Please DM me and I'll send you the details! 📩";
+        document.getElementById('encouragementReply').value = "Great question @{username}! DM me '{keyword}' for the full details 📩";
+    }
+}
+
+// Update keyword strategy
+function updateKeywordStrategy() {
+    const strategy = document.querySelector('input[name="keyword_strategy"]:checked').value;
+    
+    fetch('/api/update_keyword_strategy', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            strategy: strategy
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ Keyword strategy updated successfully!');
+            location.reload(); // Refresh to show updated strategy
+        } else {
+            alert('❌ Failed to update strategy: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error updating strategy:', error);
+        alert('❌ Error updating strategy. Please try again.');
+    });
+}
 </script>
 {% endblock %} 

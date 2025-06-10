@@ -102,7 +102,12 @@ def dashboard():
             # New configuration data
             'monitor_all_posts': Config.MONITOR_ALL_POSTS,
             'monitored_post_ids': Config.MONITORED_POST_IDS,
-            'keyword_strategy': getattr(Config, 'KEYWORD_STRATEGY', 'consent_required')
+            'keyword_strategy': getattr(Config, 'KEYWORD_STRATEGY', 'consent_required'),
+            
+            # Comment reply templates
+            'comment_reply_consent': getattr(Config, 'COMMENT_REPLY_CONSENT', 'Hi @{username}! I saw your request. Please DM me and I\'ll send you the link! 📩'),
+            'comment_reply_interest': getattr(Config, 'COMMENT_REPLY_INTEREST', 'Hi @{username}! I saw your interest in \'{keyword}\'. Please DM me and I\'ll send you the details! 📩'),
+            'comment_reply_encouragement': getattr(Config, 'COMMENT_REPLY_ENCOURAGEMENT', 'Great question @{username}! DM me \'{keyword}\' for the full details 📩')
         }
         
         # Get Instagram account info
@@ -315,6 +320,37 @@ def api_update_keyword_strategy():
         return jsonify({
             'success': False,
             'message': f'Error updating keyword strategy: {str(e)}'
+        }), 500
+
+@app.route('/api/save_comment_templates', methods=['POST'])
+def api_save_comment_templates():
+    """Save comment reply templates"""
+    try:
+        data = request.get_json()
+        
+        # Update Config with new templates
+        Config.COMMENT_REPLY_CONSENT = data.get('consent_reply', Config.COMMENT_REPLY_CONSENT)
+        Config.COMMENT_REPLY_INTEREST = data.get('interest_reply', Config.COMMENT_REPLY_INTEREST)
+        Config.COMMENT_REPLY_ENCOURAGEMENT = data.get('encouragement_reply', Config.COMMENT_REPLY_ENCOURAGEMENT)
+        
+        # Save to runtime config
+        if Config.save_runtime_config():
+            logging.info("Comment reply templates updated successfully")
+            return jsonify({
+                'success': True,
+                'message': 'Comment reply templates saved successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to save comment templates'
+            }), 500
+            
+    except Exception as e:
+        logging.error(f"Error saving comment templates: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Error saving comment templates: {str(e)}'
         }), 500
 
 @app.route('/manage_keywords')
